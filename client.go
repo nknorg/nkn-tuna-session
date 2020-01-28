@@ -265,8 +265,8 @@ func (c *TunaSessionClient) listenNet(i int) {
 					return
 				}
 				connIDs := make([]string, c.config.NumTunaListeners)
-				for i := 0; i < len(connIDs); i++ {
-					connIDs[i] = connID(i)
+				for j := 0; j < len(connIDs); j++ {
+					connIDs[j] = connID(j)
 				}
 				sess, err = c.newSession(remoteAddr, sessionID, connIDs, c.config.SessionConfig)
 				if err != nil {
@@ -449,10 +449,10 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *SessionCon
 
 	for i := 0; i < len(pubAddrs.Addrs); i++ {
 		if conn, ok := conns[connID(i)]; ok {
-			go func() {
+			go func(conn net.Conn, i int) {
 				defer conn.Close()
 				c.handleConn(conn, sess, i)
-			}()
+			}(conn, i)
 		}
 	}
 
