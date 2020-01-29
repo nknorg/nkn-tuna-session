@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -349,17 +350,17 @@ func (c *TunaSessionClient) DialSession(remoteAddr string) (*ncp.Session, error)
 	return c.DialWithConfig(remoteAddr, nil)
 }
 
-func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *SessionConfig) (*ncp.Session, error) {
-	config, err := MergeSessionConfig(c.config.SessionConfig, config)
+func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig) (*ncp.Session, error) {
+	config, err := MergeDialConfig(c.config.SessionConfig, config)
 	if err != nil {
 		return nil, err
 	}
 
-	var timeout <-chan time.Time
-	var deadline time.Time
+	ctx := context.Background()
+	var cancel context.CancelFunc
 	if config.DialTimeout > 0 {
-		timeout = time.After(time.Duration(config.DialTimeout) * time.Millisecond)
-		deadline = time.Now().Add(time.Duration(config.DialTimeout) * time.Millisecond)
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.DialTimeout)*time.Millisecond)
+		defer cancel()
 	}
 
 	buf, err := json.Marshal(&Request{Action: "getPubAddr"})
@@ -375,8 +376,8 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *SessionCon
 	var msg *nknsdk.Message
 	select {
 	case msg = <-respChan.C:
-	case <-timeout:
-		return nil, ncp.ErrDialTimeout
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 
 	pubAddrs := &PubAddrs{}
@@ -393,12 +394,12 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *SessionCon
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 	conns := make(map[string]net.Conn, len(pubAddrs.Addrs))
-	dialer := &net.Dialer{Deadline: deadline}
+	dialer := &net.Dialer{}
 	for i := range pubAddrs.Addrs {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", pubAddrs.Addrs[i].IP, pubAddrs.Addrs[i].Port))
+			conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", pubAddrs.Addrs[i].IP, pubAddrs.Addrs[i].Port))
 			if err != nil {
 				log.Printf("Dial error: %v", err)
 				return
@@ -437,7 +438,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *SessionCon
 	}
 
 	sessionKey := sessionKey(remoteAddr, sessionID)
-	sess, err := c.newSession(remoteAddr, sessionID, connIDs, config)
+	sess, err := c.newSession(remoteAddr, sessionID, connIDs, config.SessionConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +457,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *SessionCon
 		}
 	}
 
-	err = sess.Dial()
+	err = sess.Dial(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +545,7 @@ func (c *TunaSessionClient) IsClosed() bool {
 	return c.isClosed
 }
 
-func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, connIDs []string, config *SessionConfig) (*ncp.Session, error) {
+func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, connIDs []string, config *ncp.Config) (*ncp.Session, error) {
 	sessionKey := sessionKey(remoteAddr, sessionID)
 	return ncp.NewSession(c.addr, nknsdk.NewClientAddr(remoteAddr), connIDs, nil, (func(connID, _ string, buf []byte, writeTimeout time.Duration) error {
 		c.RLock()
@@ -574,7 +575,7 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 			}
 		}
 		return nil
-	}), (*ncp.Config)(config))
+	}), config)
 }
 
 func (c *TunaSessionClient) handleMsg(conn net.Conn, sess *ncp.Session, i int) error {

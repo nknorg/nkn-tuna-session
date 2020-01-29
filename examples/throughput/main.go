@@ -124,7 +124,7 @@ func main() {
 	log.Println("Seed:", hex.EncodeToString(account.Seed()))
 
 	clientConfig := &nknsdk.ClientConfig{ConnectRetries: 1}
-	sessionConfig := &session.SessionConfig{DialTimeout: 5000}
+	dialConfig := &session.DialConfig{DialTimeout: 5000}
 	config := &session.Config{NumTunaListeners: *numTunaListeners}
 
 	if *listen {
@@ -181,7 +181,7 @@ func main() {
 			*dialAddr = listenID + "." + strings.SplitN(c.Addr().String(), ".", 2)[1]
 		}
 
-		s, err := c.DialWithConfig(*dialAddr, sessionConfig)
+		s, err := c.DialWithConfig(*dialAddr, dialConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
