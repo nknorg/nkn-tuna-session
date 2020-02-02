@@ -2,7 +2,7 @@ package session
 
 import (
 	"github.com/imdario/mergo"
-	"github.com/nknorg/ncp"
+	ncp "github.com/nknorg/ncp-go"
 )
 
 type Config struct {

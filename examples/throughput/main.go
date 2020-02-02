@@ -133,6 +133,8 @@ func main() {
 			log.Fatal(err)
 		}
 
+		<-m.OnConnect.C
+
 		c, err := session.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
 			log.Fatal(err)
@@ -163,14 +165,13 @@ func main() {
 	}
 
 	if *dial {
-		if *listen {
-			time.Sleep(time.Second)
-		}
-
 		m, err := nknsdk.NewMultiClient(account, dialID, *numClients, false, clientConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		<-m.OnConnect.C
+		time.Sleep(time.Second)
 
 		c, err := session.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {

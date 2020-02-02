@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nknorg/ncp"
+	ncp "github.com/nknorg/ncp-go"
 	nknsdk "github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/tuna"
 )

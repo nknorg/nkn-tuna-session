@@ -56,6 +56,8 @@ func main() {
 			log.Fatal(err)
 		}
 
+		<-m.OnConnect.C
+
 		c, err := session.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
 			log.Fatal(err)
@@ -79,6 +81,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		<-m.OnConnect.C
 
 		c, err := session.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
