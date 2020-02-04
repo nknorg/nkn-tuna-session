@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	nknsdk "github.com/nknorg/nkn-sdk-go"
-	session "github.com/nknorg/nkn-tuna-session"
+	nkn "github.com/nknorg/nkn-sdk-go"
+	ts "github.com/nknorg/nkn-tuna-session"
 )
 
 const (
@@ -111,31 +111,31 @@ func main() {
 		log.Fatal(err)
 	}
 
-	account, err := nknsdk.NewAccount(seed)
+	account, err := nkn.NewAccount(seed)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	wallet, err := nknsdk.NewWallet(account, nil)
+	wallet, err := nkn.NewWallet(account, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Seed:", hex.EncodeToString(account.Seed()))
 
-	clientConfig := &nknsdk.ClientConfig{ConnectRetries: 1}
-	dialConfig := &session.DialConfig{DialTimeout: 5000}
-	config := &session.Config{NumTunaListeners: *numTunaListeners}
+	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
+	dialConfig := &ts.DialConfig{DialTimeout: 5000}
+	config := &ts.Config{NumTunaListeners: *numTunaListeners}
 
 	if *listen {
-		m, err := nknsdk.NewMultiClient(account, listenID, *numClients, false, clientConfig)
+		m, err := nkn.NewMultiClient(account, listenID, *numClients, false, clientConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		<-m.OnConnect.C
 
-		c, err := session.NewTunaSessionClient(account, m, wallet, config)
+		c, err := ts.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -165,7 +165,7 @@ func main() {
 	}
 
 	if *dial {
-		m, err := nknsdk.NewMultiClient(account, dialID, *numClients, false, clientConfig)
+		m, err := nkn.NewMultiClient(account, dialID, *numClients, false, clientConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -173,7 +173,7 @@ func main() {
 		<-m.OnConnect.C
 		time.Sleep(time.Second)
 
-		c, err := session.NewTunaSessionClient(account, m, wallet, config)
+		c, err := ts.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
 			log.Fatal(err)
 		}

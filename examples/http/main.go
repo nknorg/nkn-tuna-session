@@ -1,3 +1,6 @@
+// Basic usage: main -l -d -n 4
+// Use --help to see more options
+
 package main
 
 import (
@@ -9,8 +12,8 @@ import (
 	"net/http"
 	"strings"
 
-	nknsdk "github.com/nknorg/nkn-sdk-go"
-	session "github.com/nknorg/nkn-tuna-session"
+	nkn "github.com/nknorg/nkn-sdk-go"
+	ts "github.com/nknorg/nkn-tuna-session"
 )
 
 const (
@@ -20,7 +23,7 @@ const (
 
 func main() {
 	numTunaListeners := flag.Int("n", 1, "number of tuna listeners")
-	numClients := flag.Int("c", 1, "number of clients")
+	numClients := flag.Int("c", 4, "number of clients")
 	seedHex := flag.String("s", "", "secret seed")
 	dialAddr := flag.String("a", "", "dial address")
 	dial := flag.Bool("d", false, "dial")
@@ -35,30 +38,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	account, err := nknsdk.NewAccount(seed)
+	account, err := nkn.NewAccount(seed)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	wallet, err := nknsdk.NewWallet(account, nil)
+	wallet, err := nkn.NewWallet(account, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Seed:", hex.EncodeToString(account.Seed()))
 
-	clientConfig := &nknsdk.ClientConfig{ConnectRetries: 1}
-	config := &session.Config{NumTunaListeners: *numTunaListeners}
+	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
+	config := &ts.Config{NumTunaListeners: *numTunaListeners}
 
 	if *listen {
-		m, err := nknsdk.NewMultiClient(account, listenID, *numClients, false, clientConfig)
+		m, err := nkn.NewMultiClient(account, listenID, *numClients, false, clientConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		<-m.OnConnect.C
 
-		c, err := session.NewTunaSessionClient(account, m, wallet, config)
+		c, err := ts.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -77,14 +80,14 @@ func main() {
 	}
 
 	if *dial {
-		m, err := nknsdk.NewMultiClient(account, dialID, *numClients, false, clientConfig)
+		m, err := nkn.NewMultiClient(account, dialID, *numClients, false, clientConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		<-m.OnConnect.C
 
-		c, err := session.NewTunaSessionClient(account, m, wallet, config)
+		c, err := ts.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
 			log.Fatal(err)
 		}

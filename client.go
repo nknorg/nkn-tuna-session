@@ -16,21 +16,21 @@ import (
 	"time"
 
 	ncp "github.com/nknorg/ncp-go"
-	nknsdk "github.com/nknorg/nkn-sdk-go"
+	nkn "github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/tuna"
 )
 
 const (
-	DefaultSessionAllowAddr = nknsdk.DefaultSessionAllowAddr
-	SessionIDSize           = nknsdk.SessionIDSize
+	DefaultSessionAllowAddr = nkn.DefaultSessionAllowAddr
+	SessionIDSize           = nkn.SessionIDSize
 	acceptSessionBufSize    = 128
 )
 
 type TunaSessionClient struct {
 	config        *Config
-	clientAccount *nknsdk.Account
-	multiClient   *nknsdk.MultiClient
-	wallet        *nknsdk.Wallet
+	clientAccount *nkn.Account
+	multiClient   *nkn.MultiClient
+	wallet        *nkn.Wallet
 	addr          net.Addr
 	acceptSession chan *ncp.Session
 	onClose       chan struct{}
@@ -45,7 +45,7 @@ type TunaSessionClient struct {
 	isClosed     bool
 }
 
-func NewTunaSessionClient(clientAccount *nknsdk.Account, m *nknsdk.MultiClient, wallet *nknsdk.Wallet, config *Config) (*TunaSessionClient, error) {
+func NewTunaSessionClient(clientAccount *nkn.Account, m *nkn.MultiClient, wallet *nkn.Wallet, config *Config) (*TunaSessionClient, error) {
 	config, err := MergedConfig(config)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func (c *TunaSessionClient) Addr() net.Addr {
 	return c.addr
 }
 
-func (c *TunaSessionClient) Listen(addrsRe *nknsdk.StringArray) error {
+func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 	var addrs []string
 	if addrsRe == nil {
 		addrs = []string{DefaultSessionAllowAddr}
@@ -299,7 +299,7 @@ func (c *TunaSessionClient) listenNet(i int) {
 }
 
 func (c *TunaSessionClient) encode(message []byte, remoteAddr string) ([]byte, error) {
-	remotePublicKey, err := nknsdk.ClientAddrToPubKey(remoteAddr)
+	remotePublicKey, err := nkn.ClientAddrToPubKey(remoteAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func (c *TunaSessionClient) decode(buf []byte, remoteAddr string) ([]byte, error
 		return nil, errors.New("message too short")
 	}
 
-	remotePublicKey, err := nknsdk.ClientAddrToPubKey(remoteAddr)
+	remotePublicKey, err := nkn.ClientAddrToPubKey(remoteAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -368,12 +368,12 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig
 		return nil, err
 	}
 
-	respChan, err := c.multiClient.Send(nknsdk.NewStringArray(remoteAddr), buf, nil)
+	respChan, err := c.multiClient.Send(nkn.NewStringArray(remoteAddr), buf, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var msg *nknsdk.Message
+	var msg *nkn.Message
 	select {
 	case msg = <-respChan.C:
 	case <-ctx.Done():
@@ -386,7 +386,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig
 		return nil, err
 	}
 
-	sessionID, err := nknsdk.RandomBytes(SessionIDSize)
+	sessionID, err := nkn.RandomBytes(SessionIDSize)
 	if err != nil {
 		return nil, err
 	}
@@ -477,7 +477,7 @@ func (c *TunaSessionClient) AcceptSession() (*ncp.Session, error) {
 			return session, nil
 		case _, ok := <-c.onClose:
 			if !ok {
-				return nil, nknsdk.ErrClosed
+				return nil, nkn.ErrClosed
 			}
 		}
 	}
@@ -547,7 +547,7 @@ func (c *TunaSessionClient) IsClosed() bool {
 
 func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, connIDs []string, config *ncp.Config) (*ncp.Session, error) {
 	sessionKey := sessionKey(remoteAddr, sessionID)
-	return ncp.NewSession(c.addr, nknsdk.NewClientAddr(remoteAddr), connIDs, nil, (func(connID, _ string, buf []byte, writeTimeout time.Duration) error {
+	return ncp.NewSession(c.addr, nkn.NewClientAddr(remoteAddr), connIDs, nil, (func(connID, _ string, buf []byte, writeTimeout time.Duration) error {
 		c.RLock()
 		conn := c.sessionConns[sessionKey][connID]
 		c.RUnlock()
