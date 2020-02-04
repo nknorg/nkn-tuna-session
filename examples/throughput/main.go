@@ -47,8 +47,8 @@ func read(sess net.Conn) error {
 			return err
 		}
 		for i := 0; i < n; i++ {
-			if b[i] != byte(bytesReceived%math.MaxUint8) {
-				return fmt.Errorf("byte %d should be %d, got %d", bytesReceived, bytesReceived%math.MaxUint8, b[i])
+			if b[i] != byte(bytesReceived%256) {
+				return fmt.Errorf("byte %d should be %d, got %d", bytesReceived, bytesReceived%256, b[i])
 			}
 			bytesReceived++
 		}
@@ -76,7 +76,7 @@ func write(sess net.Conn, numBytes int) error {
 	for i := 0; i < numBytes/1024; i++ {
 		b := make([]byte, 1024)
 		for j := 0; j < len(b); j++ {
-			b[j] = byte(bytesSent % math.MaxUint8)
+			b[j] = byte(bytesSent % 256)
 			bytesSent++
 		}
 		n, err := sess.Write(b)
@@ -144,6 +144,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		log.Println("Listening at", c.Addr())
 
 		go func() {
 			for {

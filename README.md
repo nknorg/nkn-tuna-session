@@ -8,9 +8,12 @@ A few feature highlights:
 
 * Performance: Use multiple parallel paths to boost overall throughput.
 
-* Network agnostic: Neither dialer nor listener needs to have public IP address or NAT traversal. They are guaranteed to be connected regardless of their network conditions.
+* Network agnostic: Neither dialer nor listener needs to have public IP address
+  or NAT traversal. They are guaranteed to be connected regardless of their
+  network conditions.
 
-* Security: Using public key as address, which enables built-in end to end encryption while being invulnerable to man-in-the-middle attack.
+* Security: Using public key as address, which enables built-in end to end
+  encryption while being invulnerable to man-in-the-middle attack.
 
 A simple illustration of a session between Alice and Bob:
 
@@ -43,13 +46,14 @@ existing ones:
 
 ```go
 multiclient, err := nkn.NewMultiClient(...)
+// wallet is only needed for listener side
 wallet, err := nkn.NewWallet(...)
 ```
 
 Then you can create a tuna session client:
 
 ```go
-// wallet will be used for payment
+// wallet is only needed for listener side and will be used for payment
 // price is in unit of NKN token per MB
 c, err := ts.NewTunaSessionClient(account, multiclient, wallet, &ts.Config{TunaMaxPrice: "0"})
 ```

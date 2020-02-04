@@ -71,6 +71,8 @@ func main() {
 			log.Fatal(err)
 		}
 
+		log.Println("Listening at", c.Addr())
+
 		go func() {
 			log.Println("Serving content at", m.Addr().String())
 			fs := http.FileServer(http.Dir(*serveDir))
