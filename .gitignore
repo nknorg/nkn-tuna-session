@@ -2,3 +2,6 @@
 vendor
 *~
 .DS_Store
+Session.framework
+session.aar
+session.jar
