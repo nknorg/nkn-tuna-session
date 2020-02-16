@@ -106,8 +106,8 @@ github.com/nknorg/nnet v0.0.0-20190915192011-8917c10a07e0 h1:9vdBzjDe86z0+LaoBb8
 github.com/nknorg/nnet v0.0.0-20190915192011-8917c10a07e0/go.mod h1:XG+yLiMrl01iwez333VO2c/I0w5cy851c4STmR2/V1w=
 github.com/nknorg/nnet v0.0.0-20191227203626-cd40f91ceda2 h1:3giMkKR8f6FkryS/cL/S1+VsOkXBKi85SI2QwymY80o=
 github.com/nknorg/nnet v0.0.0-20191227203626-cd40f91ceda2/go.mod h1:XG+yLiMrl01iwez333VO2c/I0w5cy851c4STmR2/V1w=
-github.com/nknorg/tuna v0.0.0-20200214102018-b2d5440af166 h1:bryYMxwoRHWjVH9X47dPC98i+Nea5/7hnrG6Zc2hfT4=
-github.com/nknorg/tuna v0.0.0-20200214102018-b2d5440af166/go.mod h1:S0lQKDgFTiFt9HHZBwtK7OoIvzo0aNKoFSaWaRFJNMk=
+github.com/nknorg/tuna v0.0.0-20200216043814-4c6276667580 h1:/Zm/3dfC2W28XV8G64PJhoO7XiAhJcB5SMEqUuZ9xCk=
+github.com/nknorg/tuna v0.0.0-20200216043814-4c6276667580/go.mod h1:S0lQKDgFTiFt9HHZBwtK7OoIvzo0aNKoFSaWaRFJNMk=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.8.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
