@@ -3,20 +3,23 @@ package session
 import (
 	"github.com/imdario/mergo"
 	ncp "github.com/nknorg/ncp-go"
+	"github.com/nknorg/tuna"
 )
 
 type Config struct {
-	NumTunaListeners int
-	TunaMaxPrice     string
-	TunaDialTimeout  int // in millisecond
-	SessionConfig    *ncp.Config
+	NumTunaListeners       int
+	TunaMaxPrice           string
+	TunaDialTimeout        int // in millisecond
+	TunaSubscriptionPrefix string
+	SessionConfig          *ncp.Config
 }
 
 var defaultConfig = Config{
-	NumTunaListeners: 4,
-	TunaMaxPrice:     "0",
-	TunaDialTimeout:  10000,
-	SessionConfig:    nil,
+	NumTunaListeners:       4,
+	TunaMaxPrice:           "0",
+	TunaDialTimeout:        10000,
+	TunaSubscriptionPrefix: tuna.DefaultSubscriptionPrefix,
+	SessionConfig:          nil,
 }
 
 func DefaultConfig() *Config {

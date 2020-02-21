@@ -101,6 +101,7 @@ func main() {
 	dialAddr := flag.String("a", "", "dial address")
 	dial := flag.Bool("d", false, "dial")
 	listen := flag.Bool("l", false, "listen")
+	tunaSubscriptionPrefix := flag.String("tsp", "", "tuna subscription prefix")
 
 	flag.Parse()
 
@@ -125,7 +126,7 @@ func main() {
 
 	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
 	dialConfig := &ts.DialConfig{DialTimeout: 5000}
-	config := &ts.Config{NumTunaListeners: *numTunaListeners}
+	config := &ts.Config{NumTunaListeners: *numTunaListeners, TunaSubscriptionPrefix: *tunaSubscriptionPrefix}
 
 	if *listen {
 		m, err := nkn.NewMultiClient(account, listenID, *numClients, false, clientConfig)

@@ -110,7 +110,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		dialTimeout = 0
 	}
 	tunaConfig := &tuna.ExitConfiguration{
-		SubscriptionPrefix: tuna.DefaultSubscriptionPrefix,
+		SubscriptionPrefix: c.config.TunaSubscriptionPrefix,
 		Reverse:            true,
 		ReverseRandomPorts: true,
 		ReverseMaxPrice:    c.config.TunaMaxPrice,
