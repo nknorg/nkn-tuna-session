@@ -115,6 +115,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		ReverseRandomPorts: true,
 		ReverseMaxPrice:    c.config.TunaMaxPrice,
 		DialTimeout:        uint16(dialTimeout),
+		ReverseIPFilter:    GeoConfig,
 	}
 
 	connected := make(chan struct{}, 1)

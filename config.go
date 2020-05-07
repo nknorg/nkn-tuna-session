@@ -22,6 +22,25 @@ var defaultConfig = Config{
 	SessionConfig:          nil,
 }
 
+var GeoConfig = tuna.IPFilter{
+	Allow:    []tuna.Location{
+		{
+			IP:          "",
+			CountryCode: "",
+			Country:     "",
+			City:        "",
+		},
+	},
+	Disallow:    []tuna.Location{
+		{
+			IP:          "",
+			CountryCode: "",
+			Country:     "",
+			City:        "",
+		},
+	},
+}
+
 func DefaultConfig() *Config {
 	conf := defaultConfig
 	conf.SessionConfig = DefaultSessionConfig()
