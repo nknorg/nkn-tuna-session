@@ -113,14 +113,8 @@ github.com/nknorg/nnet v0.0.0-20200410235204-23cc169e8564 h1:ti9VeFaELvkk9mO2oUg
 github.com/nknorg/nnet v0.0.0-20200410235204-23cc169e8564/go.mod h1:4DHEQEMhlRGIKGSyhATdjeusdqaHafDatadtpeHBpvI=
 github.com/nknorg/portmapper v0.0.0-20200114081049-1c03cdccc283 h1:uS3/DvxCbi0zZau66ggQAgEjyGmql2mj77UQFgumq1I=
 github.com/nknorg/portmapper v0.0.0-20200114081049-1c03cdccc283/go.mod h1:dL4PQJ4670oTO6LqvkjrBQEkD+iMiOYjlKRBBw55Csg=
-github.com/nknorg/tuna v0.0.0-20200508215339-6bbe885a1e4a h1:YDKDWpk83oV1bP2t5Y6aLpPeCVmezYlUTIMh8Y7tFxg=
-github.com/nknorg/tuna v0.0.0-20200508215339-6bbe885a1e4a/go.mod h1:/NgHH4Lv2ETniTP4QNknpvlkdMNUwj6MC+EZvEM2lwA=
-github.com/nknorg/tuna v0.0.0-20200508231715-cc8314ae9239 h1:aj5zbGFsOANbe1clt71Sgs56zUaPdnzc38d98Zs2RiM=
-github.com/nknorg/tuna v0.0.0-20200508231715-cc8314ae9239/go.mod h1:/NgHH4Lv2ETniTP4QNknpvlkdMNUwj6MC+EZvEM2lwA=
-github.com/nknorg/tuna v0.0.0-20200508232423-39fd0f5b92a3 h1:hviN9RdbnSZhDjPcYAXklkBOxSOCv/HGlSbGSCdr+4k=
-github.com/nknorg/tuna v0.0.0-20200508232423-39fd0f5b92a3/go.mod h1:/NgHH4Lv2ETniTP4QNknpvlkdMNUwj6MC+EZvEM2lwA=
-github.com/nknorg/tuna v0.0.0-20200508235308-e9dba7399a2e h1:W/azX+O4AcuYoIPmFzcuAv8PfI7LqmJheigbwdFluXU=
-github.com/nknorg/tuna v0.0.0-20200508235308-e9dba7399a2e/go.mod h1:/NgHH4Lv2ETniTP4QNknpvlkdMNUwj6MC+EZvEM2lwA=
+github.com/nknorg/tuna v0.0.0-20200509010839-b8e4fdb699e6 h1:2XwuDkxzdt2vOPkn+H5UllZBRmYgSO28xXawmli7F/M=
+github.com/nknorg/tuna v0.0.0-20200509010839-b8e4fdb699e6/go.mod h1:/NgHH4Lv2ETniTP4QNknpvlkdMNUwj6MC+EZvEM2lwA=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.8.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
