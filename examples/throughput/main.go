@@ -14,6 +14,7 @@ import (
 
 	nkn "github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
+	"github.com/nknorg/tuna"
 )
 
 const (
@@ -101,6 +102,8 @@ func main() {
 	dialAddr := flag.String("a", "", "dial address")
 	dial := flag.Bool("d", false, "dial")
 	listen := flag.Bool("l", false, "listen")
+	tunaCountry := flag.String("country", "", `tuna service node allowed country code, separated by comma, e.g. "US" or "US,CN"`)
+	tunaServiceName := flag.String("tsn", "", "tuna reverse service name")
 	tunaSubscriptionPrefix := flag.String("tsp", "", "tuna subscription prefix")
 
 	flag.Parse()
@@ -110,6 +113,12 @@ func main() {
 	seed, err := hex.DecodeString(*seedHex)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	countries := strings.Split(*tunaCountry, ",")
+	locations := make([]tuna.Location, len(countries))
+	for i := range countries {
+		locations[i].CountryCode = strings.TrimSpace(countries[i])
 	}
 
 	account, err := nkn.NewAccount(seed)
@@ -126,7 +135,12 @@ func main() {
 
 	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
 	dialConfig := &ts.DialConfig{DialTimeout: 5000}
-	config := &ts.Config{NumTunaListeners: *numTunaListeners, TunaSubscriptionPrefix: *tunaSubscriptionPrefix}
+	config := &ts.Config{
+		NumTunaListeners:       *numTunaListeners,
+		TunaServiceName:        *tunaServiceName,
+		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
+		TunaIPFilter:           &tuna.IPFilter{Allow: locations},
+	}
 
 	if *listen {
 		m, err := nkn.NewMultiClient(account, listenID, *numClients, false, clientConfig)

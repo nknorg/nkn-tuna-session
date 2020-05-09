@@ -8,22 +8,29 @@ import (
 
 type Config struct {
 	NumTunaListeners       int
-	TunaMaxPrice           string
 	TunaDialTimeout        int // in millisecond
+	TunaMaxPrice           string
+	TunaNanoPayFee         string
+	TunaServiceName        string
 	TunaSubscriptionPrefix string
+	TunaIPFilter           *tuna.IPFilter
 	SessionConfig          *ncp.Config
 }
 
 var defaultConfig = Config{
 	NumTunaListeners:       4,
-	TunaMaxPrice:           "0",
 	TunaDialTimeout:        10000,
+	TunaMaxPrice:           "0",
+	TunaNanoPayFee:         "0",
+	TunaServiceName:        tuna.DefaultReverseServiceName,
 	TunaSubscriptionPrefix: tuna.DefaultSubscriptionPrefix,
+	TunaIPFilter:           nil,
 	SessionConfig:          nil,
 }
 
 func DefaultConfig() *Config {
 	conf := defaultConfig
+	conf.TunaIPFilter = &tuna.IPFilter{}
 	conf.SessionConfig = DefaultSessionConfig()
 	return &conf
 }
