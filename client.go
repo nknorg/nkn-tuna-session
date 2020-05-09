@@ -80,7 +80,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 	if addrsRe == nil {
 		addrs = []string{DefaultSessionAllowAddr}
 	} else {
-		addrs = addrsRe.Elems
+		addrs = addrsRe.Elems()
 	}
 
 	var err error
@@ -110,11 +110,14 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		dialTimeout = 0
 	}
 	tunaConfig := &tuna.ExitConfiguration{
-		SubscriptionPrefix: c.config.TunaSubscriptionPrefix,
-		Reverse:            true,
-		ReverseRandomPorts: true,
-		ReverseMaxPrice:    c.config.TunaMaxPrice,
-		DialTimeout:        uint16(dialTimeout),
+		Reverse:                   true,
+		ReverseRandomPorts:        true,
+		ReverseMaxPrice:           c.config.TunaMaxPrice,
+		ReverseNanoPayFee:         c.config.TunaNanoPayFee,
+		ReverseServiceName:        c.config.TunaServiceName,
+		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
+		ReverseIPFilter:           *c.config.TunaIPFilter,
+		DialTimeout:               uint16(dialTimeout),
 	}
 
 	connected := make(chan struct{}, 1)
