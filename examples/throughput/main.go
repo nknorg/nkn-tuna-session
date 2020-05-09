@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	ncp "github.com/nknorg/ncp-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
 	"github.com/nknorg/tuna"
@@ -105,6 +106,7 @@ func main() {
 	tunaCountry := flag.String("country", "", `tuna service node allowed country code, separated by comma, e.g. "US" or "US,CN"`)
 	tunaServiceName := flag.String("tsn", "", "tuna reverse service name")
 	tunaSubscriptionPrefix := flag.String("tsp", "", "tuna subscription prefix")
+	mtu := flag.Int("mtu", 0, "ncp session mtu")
 
 	flag.Parse()
 
@@ -140,6 +142,7 @@ func main() {
 		TunaServiceName:        *tunaServiceName,
 		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
 		TunaIPFilter:           &tuna.IPFilter{Allow: locations},
+		SessionConfig:          &ncp.Config{MTU: int32(*mtu)},
 	}
 
 	if *listen {
