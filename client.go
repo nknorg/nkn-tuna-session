@@ -117,7 +117,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		ReverseServiceName:        c.config.TunaServiceName,
 		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
 		ReverseIPFilter:           *c.config.TunaIPFilter,
-		DialTimeout:               uint16(dialTimeout),
+		DialTimeout:               int32(dialTimeout),
 	}
 
 	connected := make(chan struct{}, 1)
@@ -144,17 +144,23 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 
 		service := tuna.Service{
 			Name: "session",
-			TCP:  []int{port},
+			TCP:  []uint32{uint32(port)},
 		}
 
-		exits[i] = tuna.NewTunaExit(tunaConfig, []tuna.Service{service}, c.wallet)
-		exits[i].StartReverse(service.Name)
-		exits[i].OnEntryConnected(func() {
+		exits[i], err = tuna.NewTunaExit([]tuna.Service{service}, c.wallet, tunaConfig)
+		if err != nil {
+			return err
+		}
+
+		go func(te *tuna.TunaExit) {
+			<-te.OnConnect.C
 			select {
 			case connected <- struct{}{}:
 			default:
 			}
-		})
+		}(exits[i])
+
+		go exits[i].StartReverse(true)
 	}
 
 	<-connected

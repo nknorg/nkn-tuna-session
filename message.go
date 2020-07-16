@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/nknorg/nkn/crypto/ed25519"
+	"github.com/nknorg/nkn/v2/crypto/ed25519"
 	"golang.org/x/crypto/nacl/box"
 )
 
@@ -22,7 +22,7 @@ type Request struct {
 
 type PubAddr struct {
 	IP   string `json:"ip"`
-	Port int    `json:"port"`
+	Port uint32 `json:"port"`
 }
 
 type PubAddrs struct {
