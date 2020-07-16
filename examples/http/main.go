@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/nknorg/ncp-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
+	"github.com/nknorg/tuna"
 )
 
 const (
@@ -30,12 +32,23 @@ func main() {
 	listen := flag.Bool("l", false, "listen")
 	serveDir := flag.String("dir", ".", "serve directory")
 	httpAddr := flag.String("http", ":8080", "http listen address")
+	tunaCountry := flag.String("country", "", `tuna service node allowed country code, separated by comma, e.g. "US" or "US,CN"`)
+	tunaServiceName := flag.String("tsn", "", "tuna reverse service name")
+	tunaSubscriptionPrefix := flag.String("tsp", "", "tuna subscription prefix")
+	tunaMaxPrice := flag.String("price", "0.01", "tuna reverse service max price in unit of NKN/MB")
+	mtu := flag.Int("mtu", 0, "ncp session mtu")
 
 	flag.Parse()
 
 	seed, err := hex.DecodeString(*seedHex)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	countries := strings.Split(*tunaCountry, ",")
+	locations := make([]tuna.Location, len(countries))
+	for i := range countries {
+		locations[i].CountryCode = strings.TrimSpace(countries[i])
 	}
 
 	account, err := nkn.NewAccount(seed)
@@ -51,7 +64,14 @@ func main() {
 	log.Println("Seed:", hex.EncodeToString(account.Seed()))
 
 	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
-	config := &ts.Config{NumTunaListeners: *numTunaListeners}
+	config := &ts.Config{
+		NumTunaListeners:       *numTunaListeners,
+		TunaServiceName:        *tunaServiceName,
+		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
+		TunaMaxPrice:           *tunaMaxPrice,
+		TunaIPFilter:           &tuna.IPFilter{Allow: locations},
+		SessionConfig:          &ncp.Config{MTU: int32(*mtu)},
+	}
 
 	if *listen {
 		m, err := nkn.NewMultiClient(account, listenID, *numClients, false, clientConfig)
