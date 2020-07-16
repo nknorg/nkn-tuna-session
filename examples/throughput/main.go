@@ -143,6 +143,7 @@ func main() {
 		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
 		TunaIPFilter:           &tuna.IPFilter{Allow: locations},
 		SessionConfig:          &ncp.Config{MTU: int32(*mtu)},
+		TunaMaxPrice:           "0.01",
 	}
 
 	if *listen {
