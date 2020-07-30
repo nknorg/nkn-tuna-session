@@ -85,8 +85,8 @@ github.com/nknorg/nnet v0.0.0-20200521002812-357d1b11179f h1:JvDKr6D9LdnsdScND+8
 github.com/nknorg/nnet v0.0.0-20200521002812-357d1b11179f/go.mod h1:4DHEQEMhlRGIKGSyhATdjeusdqaHafDatadtpeHBpvI=
 github.com/nknorg/portmapper v0.0.0-20200114081049-1c03cdccc283 h1:uS3/DvxCbi0zZau66ggQAgEjyGmql2mj77UQFgumq1I=
 github.com/nknorg/portmapper v0.0.0-20200114081049-1c03cdccc283/go.mod h1:dL4PQJ4670oTO6LqvkjrBQEkD+iMiOYjlKRBBw55Csg=
-github.com/nknorg/tuna v0.0.0-20200714222241-1d03b8a3603c h1:3pgCBsJDY+uZBQooNUQbg4zp6vx8xxaNpfeLgR+SWzo=
-github.com/nknorg/tuna v0.0.0-20200714222241-1d03b8a3603c/go.mod h1:GhSzMlgyFy9SvT9TCc/UUEGmMiLxPkyeiWaiM0IWT1U=
+github.com/nknorg/tuna v0.0.0-20200729232930-42c0c6547187 h1:fQyuj5rkyQr8OzG5HdmgAhH+/fq7I3XU7c9vMe89Z6k=
+github.com/nknorg/tuna v0.0.0-20200729232930-42c0c6547187/go.mod h1:GhSzMlgyFy9SvT9TCc/UUEGmMiLxPkyeiWaiM0IWT1U=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
