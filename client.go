@@ -42,6 +42,7 @@ type TunaSessionClient struct {
 	sessions     map[string]*ncp.Session
 	sessionConns map[string]map[string]net.Conn
 	sharedKeys   map[string]*[sharedKeySize]byte
+	connCount    map[string]int
 	isClosed     bool
 }
 
@@ -62,6 +63,7 @@ func NewTunaSessionClient(clientAccount *nkn.Account, m *nkn.MultiClient, wallet
 		sessions:      make(map[string]*ncp.Session),
 		sessionConns:  make(map[string]map[string]net.Conn),
 		sharedKeys:    make(map[string]*[sharedKeySize]byte),
+		connCount:     make(map[string]int),
 	}
 
 	return c, nil
@@ -302,7 +304,23 @@ func (c *TunaSessionClient) listenNet(i int) {
 				}
 			}
 
+			c.Lock()
+			c.connCount[sessionKey]++
+			c.Unlock()
+
 			c.handleConn(conn, sess, i)
+
+			c.Lock()
+			c.connCount[sessionKey]--
+			shouldClose := c.connCount[sessionKey] == 0
+			if shouldClose {
+				delete(c.connCount, sessionKey)
+			}
+			c.Unlock()
+
+			if shouldClose {
+				sess.Close()
+			}
 		}(conn)
 	}
 }
@@ -460,8 +478,24 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig
 	for i := 0; i < len(pubAddrs.Addrs); i++ {
 		if conn, ok := conns[connID(i)]; ok {
 			go func(conn net.Conn, i int) {
-				defer conn.Close()
+				c.Lock()
+				c.connCount[sessionKey]++
+				c.Unlock()
+
 				c.handleConn(conn, sess, i)
+				conn.Close()
+
+				c.Lock()
+				c.connCount[sessionKey]--
+				shouldClose := c.connCount[sessionKey] == 0
+				if shouldClose {
+					delete(c.connCount, sessionKey)
+				}
+				c.Unlock()
+
+				if shouldClose {
+					sess.Close()
+				}
 			}(conn, i)
 		}
 	}
@@ -566,7 +600,7 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 		if writeTimeout > 0 {
 			err := conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 			if err != nil {
-				return err
+				return ncp.ErrConnClosed
 			}
 		}
 		buf, err := c.encode(buf, remoteAddr)
@@ -580,7 +614,7 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 		if writeTimeout > 0 {
 			err = conn.SetWriteDeadline(zeroTime)
 			if err != nil {
-				return err
+				return ncp.ErrConnClosed
 			}
 		}
 		return nil
