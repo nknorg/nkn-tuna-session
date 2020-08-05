@@ -597,25 +597,14 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 		if conn == nil {
 			return fmt.Errorf("conn %s is nil", connID)
 		}
-		if writeTimeout > 0 {
-			err := conn.SetWriteDeadline(time.Now().Add(writeTimeout))
-			if err != nil {
-				return ncp.ErrConnClosed
-			}
-		}
 		buf, err := c.encode(buf, remoteAddr)
 		if err != nil {
 			return err
 		}
 		err = writeMessage(conn, buf)
 		if err != nil {
-			return err
-		}
-		if writeTimeout > 0 {
-			err = conn.SetWriteDeadline(zeroTime)
-			if err != nil {
-				return ncp.ErrConnClosed
-			}
+			log.Println(err)
+			return ncp.ErrConnClosed
 		}
 		return nil
 	}), config)
