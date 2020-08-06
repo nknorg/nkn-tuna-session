@@ -82,7 +82,10 @@ func decrypt(message []byte, nonce [nonceSize]byte, sharedKey *[sharedKeySize]by
 	return decrypted, nil
 }
 
-func writeMessage(conn net.Conn, buf []byte) error {
+func writeMessage(conn *Conn, buf []byte) error {
+	conn.WriteLock.Lock()
+	defer conn.WriteLock.Unlock()
+
 	msgSizeBuf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(msgSizeBuf, uint32(len(buf)))
 	_, err := conn.Write(msgSizeBuf)
@@ -108,7 +111,10 @@ func readFull(conn net.Conn, buf []byte) error {
 	}
 }
 
-func readMessage(conn net.Conn) ([]byte, error) {
+func readMessage(conn *Conn) ([]byte, error) {
+	conn.ReadLock.Lock()
+	defer conn.ReadLock.Unlock()
+
 	msgSizeBuf := make([]byte, 4)
 	err := readFull(conn, msgSizeBuf)
 	if err != nil {
