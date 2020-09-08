@@ -3,6 +3,7 @@ module github.com/nknorg/nkn-tuna-session
 go 1.13
 
 require (
+	github.com/golang/protobuf v1.4.1
 	github.com/imdario/mergo v0.3.9
 	github.com/nknorg/ncp-go v1.0.3
 	github.com/nknorg/nkn-sdk-go v1.3.3

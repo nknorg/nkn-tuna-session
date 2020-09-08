@@ -15,8 +15,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	ncp "github.com/nknorg/ncp-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
+	"github.com/nknorg/nkn-tuna-session/pb"
 	"github.com/nknorg/tuna"
 	gocache "github.com/patrickmn/go-cache"
 )
@@ -288,12 +290,20 @@ func (c *TunaSessionClient) listenNet(i int) {
 				return
 			}
 
-			sessionID, err := c.decode(buf, remoteAddr)
+			metadataRaw, err := c.decode(buf, remoteAddr)
 			if err != nil {
 				log.Printf("Decode message error: %v", err)
 				return
 			}
 
+			metadata := &pb.SessionMetadata{}
+			err = proto.Unmarshal(metadataRaw, metadata)
+			if err != nil {
+				log.Printf("Decode session metadata error: %v", err)
+				return
+			}
+
+			sessionID := metadata.Id
 			sessKey := sessionKey(remoteAddr, sessionID)
 
 			c.Lock()
@@ -456,7 +466,17 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig
 				return
 			}
 
-			buf, err := c.encode(sessionID, remoteAddr)
+			metadata := &pb.SessionMetadata{
+				Id: sessionID,
+			}
+			metadataRaw, err := proto.Marshal(metadata)
+			if err != nil {
+				log.Printf("Encode session metadata error: %v", err)
+				conn.Close()
+				return
+			}
+
+			buf, err := c.encode(metadataRaw, remoteAddr)
 			if err != nil {
 				log.Printf("Encode message error: %v", err)
 				conn.Close()
