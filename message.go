@@ -21,12 +21,14 @@ type Request struct {
 }
 
 type PubAddr struct {
-	IP   string `json:"ip"`
-	Port uint32 `json:"port"`
+	IP       string `json:"ip"`
+	Port     uint32 `json:"port"`
+	InPrice  string `json:"inPrice,omitempty"`
+	OutPrice string `json:"outPrice,omitempty"`
 }
 
 type PubAddrs struct {
-	Addrs []PubAddr `json:"addrs"`
+	Addrs []*PubAddr `json:"addrs"`
 }
 
 func (c *TunaSessionClient) getOrComputeSharedKey(remotePublicKey []byte) (*[sharedKeySize]byte, error) {
