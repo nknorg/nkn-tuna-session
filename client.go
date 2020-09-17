@@ -195,6 +195,35 @@ func (c *TunaSessionClient) shouldAcceptAddr(addr string) bool {
 	return false
 }
 
+func (c *TunaSessionClient) getPubAddrs(includePrice bool) *PubAddrs {
+	if c.tunaExits == nil {
+		return nil
+	}
+	addrs := make([]*PubAddr, 0, len(c.tunaExits))
+	for _, tunaExit := range c.tunaExits {
+		ip := tunaExit.GetReverseIP().String()
+		ports := tunaExit.GetReverseTCPPorts()
+		if len(ip) == 0 || len(ports) == 0 {
+			continue
+		}
+		addr := &PubAddr{
+			IP:   ip,
+			Port: ports[0],
+		}
+		if includePrice {
+			entryToExitPrice, exitToEntryPrice := tunaExit.GetPrice()
+			addr.InPrice = entryToExitPrice.String()
+			addr.OutPrice = exitToEntryPrice.String()
+		}
+		addrs = append(addrs, addr)
+	}
+	return &PubAddrs{Addrs: addrs}
+}
+
+func (c *TunaSessionClient) GetPubAddrs() *PubAddrs {
+	return c.getPubAddrs(true)
+}
+
 func (c *TunaSessionClient) listenNKN() {
 	for {
 		msg := <-c.multiClient.OnMessage.C
@@ -209,24 +238,12 @@ func (c *TunaSessionClient) listenNKN() {
 		}
 		switch strings.ToLower(req.Action) {
 		case "getpubaddr":
-			addrs := make([]PubAddr, 0, len(c.tunaExits))
-			for i := 0; i < len(c.tunaExits); i++ {
-				ip := c.tunaExits[i].GetReverseIP().String()
-				ports := c.tunaExits[i].GetReverseTCPPorts()
-				if len(ip) == 0 || len(ports) == 0 {
-					continue
-				}
-				addr := PubAddr{
-					IP:   ip,
-					Port: ports[0],
-				}
-				addrs = append(addrs, addr)
-			}
-			if len(addrs) == 0 {
+			pubAddrs := c.getPubAddrs(false)
+			if len(pubAddrs.Addrs) == 0 {
 				log.Println("No entry available")
 				continue
 			}
-			buf, err := json.Marshal(&PubAddrs{Addrs: addrs})
+			buf, err := json.Marshal(pubAddrs)
 			if err != nil {
 				log.Printf("Encode reply error: %v", err)
 				continue
