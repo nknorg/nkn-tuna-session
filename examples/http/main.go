@@ -15,7 +15,7 @@ import (
 	"github.com/nknorg/ncp-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
-	"github.com/nknorg/tuna"
+	"github.com/nknorg/tuna/geo"
 )
 
 const (
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	countries := strings.Split(*tunaCountry, ",")
-	locations := make([]tuna.Location, len(countries))
+	locations := make([]geo.Location, len(countries))
 	for i := range countries {
 		locations[i].CountryCode = strings.TrimSpace(countries[i])
 	}
@@ -69,7 +69,7 @@ func main() {
 		TunaServiceName:        *tunaServiceName,
 		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
 		TunaMaxPrice:           *tunaMaxPrice,
-		TunaIPFilter:           &tuna.IPFilter{Allow: locations},
+		TunaIPFilter:           &geo.IPFilter{Allow: locations},
 		SessionConfig:          &ncp.Config{MTU: int32(*mtu)},
 	}
 

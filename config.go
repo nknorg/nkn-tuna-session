@@ -4,6 +4,7 @@ import (
 	"github.com/imdario/mergo"
 	ncp "github.com/nknorg/ncp-go"
 	"github.com/nknorg/tuna"
+	"github.com/nknorg/tuna/geo"
 )
 
 type Config struct {
@@ -13,7 +14,7 @@ type Config struct {
 	TunaNanoPayFee         string
 	TunaServiceName        string
 	TunaSubscriptionPrefix string
-	TunaIPFilter           *tuna.IPFilter
+	TunaIPFilter           *geo.IPFilter
 	SessionConfig          *ncp.Config
 }
 
@@ -30,7 +31,7 @@ var defaultConfig = Config{
 
 func DefaultConfig() *Config {
 	conf := defaultConfig
-	conf.TunaIPFilter = &tuna.IPFilter{}
+	conf.TunaIPFilter = &geo.IPFilter{}
 	conf.SessionConfig = DefaultSessionConfig()
 	return &conf
 }
