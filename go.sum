@@ -254,8 +254,8 @@ github.com/nknorg/nnet v0.0.0-20200521002812-357d1b11179f h1:JvDKr6D9LdnsdScND+8
 github.com/nknorg/nnet v0.0.0-20200521002812-357d1b11179f/go.mod h1:4DHEQEMhlRGIKGSyhATdjeusdqaHafDatadtpeHBpvI=
 github.com/nknorg/portmapper v0.0.0-20200114081049-1c03cdccc283 h1:uS3/DvxCbi0zZau66ggQAgEjyGmql2mj77UQFgumq1I=
 github.com/nknorg/portmapper v0.0.0-20200114081049-1c03cdccc283/go.mod h1:dL4PQJ4670oTO6LqvkjrBQEkD+iMiOYjlKRBBw55Csg=
-github.com/nknorg/tuna v0.0.0-20201017002434-416a41ed7b56 h1:WeWh2H1Lj5sEC0VHVZ8SaP5AqYYDO3YQqxX4mRkhvhU=
-github.com/nknorg/tuna v0.0.0-20201017002434-416a41ed7b56/go.mod h1:t2GI4ZY5NSKEGSxIjIF4t72Tk/4jKBXDPdm2yjE4s+Y=
+github.com/nknorg/tuna v0.0.0-20201017005948-d500a3d9970a h1:Ax7jxjvld67qozJXk4g1gPbGVvq9s14FzOi0OtmOL6Q=
+github.com/nknorg/tuna v0.0.0-20201017005948-d500a3d9970a/go.mod h1:t2GI4ZY5NSKEGSxIjIF4t72Tk/4jKBXDPdm2yjE4s+Y=
 github.com/nrdcg/auroradns v1.0.1/go.mod h1:y4pc0i9QXYlFCWrhWrUSIETnZgrf4KuwjDIWmmXo3JI=
 github.com/nrdcg/dnspod-go v0.4.0/go.mod h1:vZSoFSFeQVm2gWLMkyX61LZ8HI3BaqtHZWgPTGKr6KQ=
 github.com/nrdcg/goinwx v0.7.0/go.mod h1:4tKJOCi/1lTxuw9/yB2Ez0aojwtUCSkckjc22eALpqE=

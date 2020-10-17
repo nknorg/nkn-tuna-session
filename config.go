@@ -15,6 +15,8 @@ type Config struct {
 	TunaServiceName        string
 	TunaSubscriptionPrefix string
 	TunaIPFilter           *geo.IPFilter
+	TunaDownloadGeoDB      bool
+	TunaGeoDBPath          string
 	SessionConfig          *ncp.Config
 }
 
@@ -26,6 +28,8 @@ var defaultConfig = Config{
 	TunaServiceName:        tuna.DefaultReverseServiceName,
 	TunaSubscriptionPrefix: tuna.DefaultSubscriptionPrefix,
 	TunaIPFilter:           nil,
+	TunaDownloadGeoDB:      false,
+	TunaGeoDBPath:          "",
 	SessionConfig:          nil,
 }
 

@@ -128,6 +128,8 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		ReverseServiceName:        c.config.TunaServiceName,
 		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
 		ReverseIPFilter:           *c.config.TunaIPFilter,
+		DownloadGeoDB:             c.config.TunaDownloadGeoDB,
+		GeoDBPath:                 c.config.TunaGeoDBPath,
 		DialTimeout:               int32(dialTimeout),
 	}
 
