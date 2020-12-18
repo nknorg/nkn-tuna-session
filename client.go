@@ -130,6 +130,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		ReverseIPFilter:           *c.config.TunaIPFilter,
 		DownloadGeoDB:             c.config.TunaDownloadGeoDB,
 		GeoDBPath:                 c.config.TunaGeoDBPath,
+		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
 		DialTimeout:               int32(dialTimeout),
 	}
 
