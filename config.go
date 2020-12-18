@@ -17,6 +17,7 @@ type Config struct {
 	TunaIPFilter           *geo.IPFilter
 	TunaDownloadGeoDB      bool
 	TunaGeoDBPath          string
+	TunaMeasureBandwidth   bool
 	SessionConfig          *ncp.Config
 }
 
@@ -30,6 +31,7 @@ var defaultConfig = Config{
 	TunaIPFilter:           nil,
 	TunaDownloadGeoDB:      false,
 	TunaGeoDBPath:          "",
+	TunaMeasureBandwidth:   false,
 	SessionConfig:          nil,
 }
 
