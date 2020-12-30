@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	nonceSize     = 24
-	sharedKeySize = 32
+	nonceSize              = 24
+	sharedKeySize          = 32
+	maxAddrSize            = 512
+	maxSessionMetadataSize = 1024
+	maxSessionMsgOverhead  = 1024
 )
 
 type Request struct {
@@ -113,7 +116,7 @@ func readFull(conn net.Conn, buf []byte) error {
 	}
 }
 
-func readMessage(conn *Conn) ([]byte, error) {
+func readMessage(conn *Conn, maxMsgSize uint32) ([]byte, error) {
 	conn.ReadLock.Lock()
 	defer conn.ReadLock.Unlock()
 
@@ -124,6 +127,10 @@ func readMessage(conn *Conn) ([]byte, error) {
 	}
 
 	msgSize := binary.LittleEndian.Uint32(msgSizeBuf)
+	if msgSize > maxMsgSize {
+		return nil, errors.New("invalid message size")
+	}
+
 	buf := make([]byte, msgSize)
 	err = readFull(conn, buf)
 	if err != nil {

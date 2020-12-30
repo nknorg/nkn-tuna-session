@@ -278,7 +278,7 @@ func (c *TunaSessionClient) listenNet(i int) {
 		go func(conn *Conn) {
 			defer conn.Close()
 
-			buf, err := readMessage(conn)
+			buf, err := readMessage(conn, maxAddrSize)
 			if err != nil {
 				log.Printf("Read message error: %v", err)
 				return
@@ -286,7 +286,7 @@ func (c *TunaSessionClient) listenNet(i int) {
 
 			remoteAddr := string(buf)
 
-			buf, err = readMessage(conn)
+			buf, err = readMessage(conn, maxSessionMetadataSize)
 			if err != nil {
 				log.Printf("Read message error: %v", err)
 				return
@@ -637,7 +637,7 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 }
 
 func (c *TunaSessionClient) handleMsg(conn *Conn, sess *ncp.Session, i int) error {
-	buf, err := readMessage(conn)
+	buf, err := readMessage(conn, uint32(c.config.SessionConfig.MTU+maxSessionMsgOverhead))
 	if err != nil {
 		return err
 	}
