@@ -287,6 +287,10 @@ func (c *TunaSessionClient) listenNet(i int) {
 
 			remoteAddr := string(buf)
 
+			if !c.shouldAcceptAddr(remoteAddr) {
+				return
+			}
+
 			buf, err = readMessage(conn, maxSessionMetadataSize)
 			if err != nil {
 				log.Printf("Read message error: %v", err)
@@ -312,10 +316,6 @@ func (c *TunaSessionClient) listenNet(i int) {
 			c.Lock()
 			sess, ok := c.sessions[sessKey]
 			if !ok {
-				if !c.shouldAcceptAddr(remoteAddr) {
-					c.Unlock()
-					return
-				}
 				if _, ok := c.closedSessionKey.Get(sessKey); ok {
 					c.Unlock()
 					return
@@ -331,6 +331,10 @@ func (c *TunaSessionClient) listenNet(i int) {
 				}
 				c.sessions[sessKey] = sess
 				c.sessionConns[sessKey] = make(map[string]*Conn, c.config.NumTunaListeners)
+			}
+			if _, ok := c.sessionConns[sessKey][connID(i)]; ok {
+				c.Unlock()
+				return
 			}
 			c.sessionConns[sessKey][connID(i)] = conn
 			c.Unlock()
