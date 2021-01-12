@@ -128,7 +128,7 @@ func readMessage(conn *Conn, maxMsgSize uint32) ([]byte, error) {
 
 	msgSize := binary.LittleEndian.Uint32(msgSizeBuf)
 	if msgSize > maxMsgSize {
-		return nil, errors.New("invalid message size")
+		return nil, fmt.Errorf("invalid message size %d, should be no greater than %d", msgSize, maxMsgSize)
 	}
 
 	buf := make([]byte, msgSize)
