@@ -132,6 +132,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		GeoDBPath:                 c.config.TunaGeoDBPath,
 		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
 		DialTimeout:               int32(dialTimeout),
+		SortMeasuredNodes:         sortMeasuredNodes,
 	}
 
 	connected := make(chan struct{}, 1)
