@@ -106,6 +106,7 @@ func main() {
 	tunaCountry := flag.String("country", "", `tuna service node allowed country code, separated by comma, e.g. "US" or "US,CN"`)
 	tunaServiceName := flag.String("tsn", "", "tuna reverse service name")
 	tunaSubscriptionPrefix := flag.String("tsp", "", "tuna subscription prefix")
+	tunaMeasureBandwidth := flag.Bool("tmb", false, "tuna measure bandwidth")
 	tunaMaxPrice := flag.String("price", "0.01", "tuna reverse service max price in unit of NKN/MB")
 	mtu := flag.Int("mtu", 0, "ncp session mtu")
 
@@ -142,6 +143,7 @@ func main() {
 		NumTunaListeners:       *numTunaListeners,
 		TunaServiceName:        *tunaServiceName,
 		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
+		TunaMeasureBandwidth:   *tunaMeasureBandwidth,
 		TunaMaxPrice:           *tunaMaxPrice,
 		TunaIPFilter:           &geo.IPFilter{Allow: locations},
 		SessionConfig:          &ncp.Config{MTU: int32(*mtu)},
