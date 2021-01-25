@@ -131,6 +131,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		DownloadGeoDB:             c.config.TunaDownloadGeoDB,
 		GeoDBPath:                 c.config.TunaGeoDBPath,
 		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
+		MeasureStoragePath:        c.config.TunaMeasureStoragePath,
 		DialTimeout:               int32(dialTimeout),
 		SortMeasuredNodes:         sortMeasuredNodes,
 	}
