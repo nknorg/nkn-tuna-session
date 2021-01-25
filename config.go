@@ -18,6 +18,7 @@ type Config struct {
 	TunaDownloadGeoDB      bool
 	TunaGeoDBPath          string
 	TunaMeasureBandwidth   bool
+	TunaMeasureStoragePath string
 	SessionConfig          *ncp.Config
 }
 
@@ -32,6 +33,7 @@ var defaultConfig = Config{
 	TunaDownloadGeoDB:      false,
 	TunaGeoDBPath:          "",
 	TunaMeasureBandwidth:   false,
+	TunaMeasureStoragePath: "",
 	SessionConfig:          nil,
 }
 
