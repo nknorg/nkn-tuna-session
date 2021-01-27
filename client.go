@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net"
 	"regexp"
 	"strconv"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/imdario/mergo"
 	ncp "github.com/nknorg/ncp-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/nkn-tuna-session/pb"
@@ -86,7 +86,18 @@ func (c *TunaSessionClient) Addr() net.Addr {
 	return c.addr
 }
 
+// SetConfig will set any non-empty value in conf to tuna session config.
+func (c *TunaSessionClient) SetConfig(conf *Config) error {
+	c.Lock()
+	defer c.Unlock()
+	return mergo.Merge(c.config, conf, mergo.WithOverride)
+}
+
 func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
+	if i >= len(c.listeners) {
+		return nil, errors.New("index out of range")
+	}
+
 	_, portStr, err := net.SplitHostPort(c.listeners[i].Addr().String())
 	if err != nil {
 		return nil, err
@@ -97,9 +108,9 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		return nil, err
 	}
 
-	dialTimeout := c.config.TunaDialTimeout / 1000
-	if dialTimeout > math.MaxUint16 {
-		dialTimeout = 0
+	service := tuna.Service{
+		Name: "session",
+		TCP:  []uint32{uint32(port)},
 	}
 
 	tunaConfig := &tuna.ExitConfiguration{
@@ -114,13 +125,8 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		GeoDBPath:                 c.config.TunaGeoDBPath,
 		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
 		MeasureStoragePath:        c.config.TunaMeasureStoragePath,
-		DialTimeout:               int32(dialTimeout),
+		DialTimeout:               int32(c.config.TunaDialTimeout / 1000),
 		SortMeasuredNodes:         sortMeasuredNodes,
-	}
-
-	service := tuna.Service{
-		Name: "session",
-		TCP:  []uint32{uint32(port)},
 	}
 
 	return tuna.NewTunaExit([]tuna.Service{service}, c.wallet, tunaConfig)
@@ -201,17 +207,12 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 // accepted will use new tuna exit, existing connections will not be affected.
 func (c *TunaSessionClient) RotateOne(i int) error {
 	c.RLock()
-	n := len(c.listeners)
-	c.RUnlock()
-
-	if i >= n {
-		return errors.New("index out of range")
-	}
-
 	te, err := c.newTunaExit(i)
 	if err != nil {
+		c.RUnlock()
 		return err
 	}
+	c.RUnlock()
 
 	go te.StartReverse(true)
 
