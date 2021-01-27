@@ -90,7 +90,14 @@ func (c *TunaSessionClient) Addr() net.Addr {
 func (c *TunaSessionClient) SetConfig(conf *Config) error {
 	c.Lock()
 	defer c.Unlock()
-	return mergo.Merge(c.config, conf, mergo.WithOverride)
+	err := mergo.Merge(c.config, conf, mergo.WithOverride)
+	if err != nil {
+		return err
+	}
+	if conf.TunaIPFilter != nil {
+		c.config.TunaIPFilter = conf.TunaIPFilter
+	}
+	return nil
 }
 
 func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
