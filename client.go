@@ -86,6 +86,46 @@ func (c *TunaSessionClient) Addr() net.Addr {
 	return c.addr
 }
 
+func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
+	_, portStr, err := net.SplitHostPort(c.listeners[i].Addr().String())
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return nil, err
+	}
+
+	dialTimeout := c.config.TunaDialTimeout / 1000
+	if dialTimeout > math.MaxUint16 {
+		dialTimeout = 0
+	}
+
+	tunaConfig := &tuna.ExitConfiguration{
+		Reverse:                   true,
+		ReverseRandomPorts:        true,
+		ReverseMaxPrice:           c.config.TunaMaxPrice,
+		ReverseNanoPayFee:         c.config.TunaNanoPayFee,
+		ReverseServiceName:        c.config.TunaServiceName,
+		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
+		ReverseIPFilter:           *c.config.TunaIPFilter,
+		DownloadGeoDB:             c.config.TunaDownloadGeoDB,
+		GeoDBPath:                 c.config.TunaGeoDBPath,
+		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
+		MeasureStoragePath:        c.config.TunaMeasureStoragePath,
+		DialTimeout:               int32(dialTimeout),
+		SortMeasuredNodes:         sortMeasuredNodes,
+	}
+
+	service := tuna.Service{
+		Name: "session",
+		TCP:  []uint32{uint32(port)},
+	}
+
+	return tuna.NewTunaExit([]tuna.Service{service}, c.wallet, tunaConfig)
+}
+
 func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 	var addrs []string
 	if addrsRe == nil {
@@ -116,54 +156,19 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		return errors.New("wallet is empty")
 	}
 
-	dialTimeout := c.config.TunaDialTimeout / 1000
-	if dialTimeout > math.MaxUint16 {
-		dialTimeout = 0
-	}
-	tunaConfig := &tuna.ExitConfiguration{
-		Reverse:                   true,
-		ReverseRandomPorts:        true,
-		ReverseMaxPrice:           c.config.TunaMaxPrice,
-		ReverseNanoPayFee:         c.config.TunaNanoPayFee,
-		ReverseServiceName:        c.config.TunaServiceName,
-		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
-		ReverseIPFilter:           *c.config.TunaIPFilter,
-		DownloadGeoDB:             c.config.TunaDownloadGeoDB,
-		GeoDBPath:                 c.config.TunaGeoDBPath,
-		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
-		MeasureStoragePath:        c.config.TunaMeasureStoragePath,
-		DialTimeout:               int32(dialTimeout),
-		SortMeasuredNodes:         sortMeasuredNodes,
-	}
-
-	connected := make(chan struct{}, 1)
 	listeners := make([]net.Listener, c.config.NumTunaListeners)
-	exits := make([]*tuna.TunaExit, c.config.NumTunaListeners)
-
 	for i := 0; i < len(listeners); i++ {
-		listener, err := net.Listen("tcp", "127.0.0.1:")
+		listeners[i], err = net.Listen("tcp", "127.0.0.1:")
 		if err != nil {
 			return err
 		}
+	}
+	c.listeners = listeners
 
-		listeners[i] = listener
-
-		_, portStr, err := net.SplitHostPort(listener.Addr().String())
-		if err != nil {
-			return err
-		}
-
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			return err
-		}
-
-		service := tuna.Service{
-			Name: "session",
-			TCP:  []uint32{uint32(port)},
-		}
-
-		exits[i], err = tuna.NewTunaExit([]tuna.Service{service}, c.wallet, tunaConfig)
+	exits := make([]*tuna.TunaExit, c.config.NumTunaListeners)
+	connected := make(chan struct{}, 1)
+	for i := 0; i < len(listeners); i++ {
+		exits[i], err = c.newTunaExit(i)
 		if err != nil {
 			return err
 		}
@@ -181,7 +186,6 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 
 	<-connected
 
-	c.listeners = listeners
 	c.tunaExits = exits
 
 	go c.listenNKN()
@@ -190,6 +194,55 @@ func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
 		go c.listenNet(i)
 	}
 
+	return nil
+}
+
+// RotateOne create a new tuna exit and replace the i-th one. New connections
+// accepted will use new tuna exit, existing connections will not be affected.
+func (c *TunaSessionClient) RotateOne(i int) error {
+	c.RLock()
+	n := len(c.listeners)
+	c.RUnlock()
+
+	if i >= n {
+		return errors.New("index out of range")
+	}
+
+	te, err := c.newTunaExit(i)
+	if err != nil {
+		return err
+	}
+
+	go te.StartReverse(true)
+
+	<-te.OnConnect.C
+
+	c.Lock()
+	oldTe := c.tunaExits[i]
+	c.tunaExits[i] = te
+	c.Unlock()
+
+	if oldTe != nil {
+		oldTe.SetLinger(-1)
+		go oldTe.Close()
+	}
+
+	return nil
+}
+
+// RotateOne create and replace all tuna exit. New connections accepted will use
+// new tuna exit, existing connections will not be affected.
+func (c *TunaSessionClient) RotateAll() error {
+	c.RLock()
+	n := len(c.listeners)
+	c.RUnlock()
+
+	for i := 0; i < n; i++ {
+		err := c.RotateOne(i)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
