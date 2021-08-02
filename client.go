@@ -97,6 +97,9 @@ func (c *TunaSessionClient) SetConfig(conf *Config) error {
 	if conf.TunaIPFilter != nil {
 		c.config.TunaIPFilter = conf.TunaIPFilter
 	}
+	if conf.TunaNknFilter != nil {
+		c.config.TunaNknFilter = conf.TunaNknFilter
+	}
 	return nil
 }
 
@@ -128,6 +131,7 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		ReverseServiceName:        c.config.TunaServiceName,
 		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
 		ReverseIPFilter:           *c.config.TunaIPFilter,
+		ReverseNknFilter:          *c.config.TunaNknFilter,
 		DownloadGeoDB:             c.config.TunaDownloadGeoDB,
 		GeoDBPath:                 c.config.TunaGeoDBPath,
 		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
