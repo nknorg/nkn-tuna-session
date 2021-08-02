@@ -4,6 +4,7 @@ import (
 	"github.com/imdario/mergo"
 	ncp "github.com/nknorg/ncp-go"
 	"github.com/nknorg/tuna"
+	"github.com/nknorg/tuna/filter"
 	"github.com/nknorg/tuna/geo"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	TunaServiceName        string
 	TunaSubscriptionPrefix string
 	TunaIPFilter           *geo.IPFilter
+	TunaNknFilter          *filter.NknFilter
 	TunaDownloadGeoDB      bool
 	TunaGeoDBPath          string
 	TunaMeasureBandwidth   bool
@@ -30,6 +32,7 @@ var defaultConfig = Config{
 	TunaServiceName:        tuna.DefaultReverseServiceName,
 	TunaSubscriptionPrefix: tuna.DefaultSubscriptionPrefix,
 	TunaIPFilter:           nil,
+	TunaNknFilter:          nil,
 	TunaDownloadGeoDB:      false,
 	TunaGeoDBPath:          "",
 	TunaMeasureBandwidth:   false,
@@ -40,6 +43,7 @@ var defaultConfig = Config{
 func DefaultConfig() *Config {
 	conf := defaultConfig
 	conf.TunaIPFilter = &geo.IPFilter{}
+	conf.TunaNknFilter = &filter.NknFilter{}
 	conf.SessionConfig = DefaultSessionConfig()
 	return &conf
 }
