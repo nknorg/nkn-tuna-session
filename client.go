@@ -140,7 +140,7 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		SortMeasuredNodes:         sortMeasuredNodes,
 	}
 
-	return tuna.NewTunaExit([]tuna.Service{service}, c.wallet, tunaConfig)
+	return tuna.NewTunaExit([]tuna.Service{service}, c.wallet, nil, tunaConfig)
 }
 
 func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
