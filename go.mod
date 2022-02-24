@@ -3,12 +3,13 @@ module github.com/nknorg/nkn-tuna-session
 go 1.13
 
 require (
-	github.com/golang/protobuf v1.4.1
 	github.com/imdario/mergo v0.3.9
-	github.com/nknorg/ncp-go v1.0.3
-	github.com/nknorg/nkn-sdk-go v1.3.7-0.20210520085335-6a2cf0700b0c
-	github.com/nknorg/nkn/v2 v2.0.6
-	github.com/nknorg/tuna v0.0.0-20210811062047-38dae81de87e
+	github.com/nknorg/ncp-go v1.0.4-0.20220224111535-206abfb10fe8
+	github.com/nknorg/nkn-sdk-go v1.3.8
+	github.com/nknorg/nkn/v2 v2.1.8
+	github.com/nknorg/nkngomobile v0.0.0-20220125080321-848ddd2e5157
+	github.com/nknorg/tuna v0.0.0-20220224114148-597496bdcb11
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
+	google.golang.org/protobuf v1.27.1
 )

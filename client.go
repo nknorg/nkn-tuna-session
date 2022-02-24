@@ -14,19 +14,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/imdario/mergo"
 	ncp "github.com/nknorg/ncp-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/nkn-tuna-session/pb"
+	"github.com/nknorg/nkngomobile"
 	"github.com/nknorg/tuna"
 	gocache "github.com/patrickmn/go-cache"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
 	DefaultSessionAllowAddr         = nkn.DefaultSessionAllowAddr
 	SessionIDSize                   = nkn.SessionIDSize
-	acceptSessionBufSize            = 128
+	acceptSessionBufSize            = 1024
 	closedSessionKeyExpiration      = 5 * time.Minute
 	closedSessionKeyCleanupInterval = time.Minute
 )
@@ -143,7 +144,7 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 	return tuna.NewTunaExit([]tuna.Service{service}, c.wallet, nil, tunaConfig)
 }
 
-func (c *TunaSessionClient) Listen(addrsRe *nkn.StringArray) error {
+func (c *TunaSessionClient) Listen(addrsRe *nkngomobile.StringArray) error {
 	var addrs []string
 	if addrsRe == nil {
 		addrs = []string{DefaultSessionAllowAddr}
