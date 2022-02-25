@@ -138,7 +138,7 @@ func main() {
 	log.Println("Seed:", hex.EncodeToString(account.Seed()))
 
 	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
-	dialConfig := &ts.DialConfig{DialTimeout: 5000}
+	dialConfig := &nkn.DialConfig{DialTimeout: 5000}
 	config := &ts.Config{
 		NumTunaListeners:       *numTunaListeners,
 		TunaServiceName:        *tunaServiceName,
@@ -195,7 +195,7 @@ func main() {
 		}
 
 		<-m.OnConnect.C
-		time.Sleep(time.Second)
+		time.Sleep(5 * time.Second)
 
 		c, err := ts.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
