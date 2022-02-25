@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/nknorg/nkn/v2/crypto/ed25519"
 	"golang.org/x/crypto/nacl/box"
@@ -87,19 +88,32 @@ func decrypt(message []byte, nonce [nonceSize]byte, sharedKey *[sharedKeySize]by
 	return decrypted, nil
 }
 
-func writeMessage(conn *Conn, buf []byte) error {
+func writeMessage(conn *Conn, buf []byte, writeTimeout time.Duration) error {
 	conn.WriteLock.Lock()
 	defer conn.WriteLock.Unlock()
 
 	msgSizeBuf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(msgSizeBuf, uint32(len(buf)))
+
+	if writeTimeout > 0 {
+		conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+	}
+
 	_, err := conn.Write(msgSizeBuf)
 	if err != nil {
 		return err
 	}
 
 	_, err = conn.Write(buf)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if writeTimeout > 0 {
+		conn.SetWriteDeadline(zeroTime)
+	}
+
+	return nil
 }
 
 func readFull(conn net.Conn, buf []byte) error {

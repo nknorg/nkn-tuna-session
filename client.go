@@ -477,8 +477,8 @@ func (c *TunaSessionClient) DialSession(remoteAddr string) (*ncp.Session, error)
 	return c.DialWithConfig(remoteAddr, nil)
 }
 
-func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig) (*ncp.Session, error) {
-	config, err := MergeDialConfig(c.config.SessionConfig, config)
+func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialConfig) (*ncp.Session, error) {
+	config, err := nkn.MergeDialConfig(c.config.SessionConfig, config)
 	if err != nil {
 		return nil, err
 	}
@@ -534,7 +534,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig
 
 			conn := newConn(netConn)
 
-			err = writeMessage(conn, []byte(c.addr.String()))
+			err = writeMessage(conn, []byte(c.addr.String()), time.Duration(config.DialTimeout)*time.Millisecond)
 			if err != nil {
 				log.Printf("Write message error: %v", err)
 				conn.Close()
@@ -558,7 +558,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *DialConfig
 				return
 			}
 
-			err = writeMessage(conn, buf)
+			err = writeMessage(conn, buf, time.Duration(config.DialTimeout)*time.Millisecond)
 			if err != nil {
 				log.Printf("Write message error: %v", err)
 				conn.Close()
@@ -700,9 +700,10 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 		if err != nil {
 			return err
 		}
-		err = writeMessage(conn, buf)
+		err = writeMessage(conn, buf, writeTimeout)
 		if err != nil {
 			log.Println("Write message error:", err)
+			conn.Close()
 			return ncp.ErrConnClosed
 		}
 		return nil
@@ -769,6 +770,7 @@ func (c *TunaSessionClient) handleConn(conn *Conn, sessKey string, i int) {
 			default:
 			}
 			log.Printf("handle msg error: %v", err)
+			return
 		}
 	}
 }
