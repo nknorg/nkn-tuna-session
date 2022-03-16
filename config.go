@@ -13,6 +13,8 @@ type Config struct {
 	TunaDialTimeout        int // in millisecond
 	TunaMaxPrice           string
 	TunaNanoPayFee         string
+	TunaMinNanoPayFee      string
+	TunaNanoPayFeeRatio    float64
 	TunaServiceName        string
 	TunaSubscriptionPrefix string
 	TunaIPFilter           *geo.IPFilter
@@ -28,7 +30,9 @@ var defaultConfig = Config{
 	NumTunaListeners:       4,
 	TunaDialTimeout:        10000,
 	TunaMaxPrice:           "0",
-	TunaNanoPayFee:         "0",
+	TunaNanoPayFee:         "",
+	TunaMinNanoPayFee:      "0",
+	TunaNanoPayFeeRatio:    0.1,
 	TunaServiceName:        tuna.DefaultReverseServiceName,
 	TunaSubscriptionPrefix: tuna.DefaultSubscriptionPrefix,
 	TunaIPFilter:           nil,
