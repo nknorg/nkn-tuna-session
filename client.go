@@ -129,6 +129,8 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		ReverseRandomPorts:        true,
 		ReverseMaxPrice:           c.config.TunaMaxPrice,
 		ReverseNanoPayFee:         c.config.TunaNanoPayFee,
+		MinReverseNanoPayFee:      c.config.TunaMinNanoPayFee,
+		ReverseNanoPayFeeRatio:    c.config.TunaNanoPayFeeRatio,
 		ReverseServiceName:        c.config.TunaServiceName,
 		ReverseSubscriptionPrefix: c.config.TunaSubscriptionPrefix,
 		ReverseIPFilter:           *c.config.TunaIPFilter,
