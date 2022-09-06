@@ -3,6 +3,7 @@ package session
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -36,8 +37,9 @@ type PubAddrs struct {
 }
 
 func (c *TunaSessionClient) getOrComputeSharedKey(remotePublicKey []byte) (*[sharedKeySize]byte, error) {
+	k := hex.EncodeToString(remotePublicKey)
 	c.RLock()
-	sharedKey, ok := c.sharedKeys[string(remotePublicKey)]
+	sharedKey, ok := c.sharedKeys[k]
 	c.RUnlock()
 	if ok && sharedKey != nil {
 		return sharedKey, nil
@@ -62,10 +64,18 @@ func (c *TunaSessionClient) getOrComputeSharedKey(remotePublicKey []byte) (*[sha
 	box.Precompute(sharedKey, curve25519PublicKey, curveSecretKey)
 
 	c.Lock()
-	c.sharedKeys[string(remotePublicKey)] = sharedKey
+	c.sharedKeys[k] = sharedKey
 	c.Unlock()
 
 	return sharedKey, nil
+}
+
+func (c *TunaSessionClient) GetAccountPubKey() []byte {
+	return c.clientAccount.PubKey()
+}
+
+func (c *TunaSessionClient) GetAccountPrivKey() []byte {
+	return c.clientAccount.PrivKey()
 }
 
 func encrypt(message []byte, sharedKey *[sharedKeySize]byte) ([]byte, []byte, error) {
