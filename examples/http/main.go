@@ -91,6 +91,8 @@ func main() {
 			log.Fatal(err)
 		}
 
+		<-c.OnConnect()
+
 		log.Println("Listening at", c.Addr())
 
 		go func() {

@@ -70,6 +70,12 @@ err = c.Listen(nkn.NewStringArray("25d660916021ab1d182fb6b52d666b47a0f181ed68cf5
 err = c.Listen(nkn.NewStringArray("^alice\\.25d660916021ab1d182fb6b52d666b47a0f181ed68cf52a056041bdcf4faaf99$"))
 ```
 
+Wait for tuna to connect:
+
+```go
+<-c.OnConnect()
+```
+
 Then it can start accepting sessions:
 
 ```go
