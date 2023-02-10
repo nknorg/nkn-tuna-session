@@ -11,5 +11,6 @@ require (
 	github.com/nknorg/tuna v0.0.0-20220401064644-3907cf1cd3a2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
+	golang.org/x/sys v0.5.0 // indirect
 	google.golang.org/protobuf v1.27.1
 )

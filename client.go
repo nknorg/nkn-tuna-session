@@ -39,7 +39,9 @@ type TunaSessionClient struct {
 	wallet        *nkn.Wallet
 	addr          net.Addr
 	acceptSession chan *ncp.Session
+	onConnect     chan struct{}
 	onClose       chan struct{}
+	connectedOnce sync.Once
 
 	sync.RWMutex
 	listeners        []net.Listener
@@ -66,6 +68,7 @@ func NewTunaSessionClient(clientAccount *nkn.Account, m *nkn.MultiClient, wallet
 		wallet:           wallet,
 		addr:             m.Addr(),
 		acceptSession:    make(chan *ncp.Session, acceptSessionBufSize),
+		onConnect:        make(chan struct{}, 0),
 		onClose:          make(chan struct{}, 0),
 		sessions:         make(map[string]*ncp.Session),
 		sessionConns:     make(map[string]map[string]*Conn),
@@ -186,7 +189,6 @@ func (c *TunaSessionClient) Listen(addrsRe *nkngomobile.StringArray) error {
 	c.listeners = listeners
 
 	exits := make([]*tuna.TunaExit, c.config.NumTunaListeners)
-	connected := make(chan struct{}, 1)
 	for i := 0; i < len(listeners); i++ {
 		exits[i], err = c.newTunaExit(i)
 		if err != nil {
@@ -194,27 +196,40 @@ func (c *TunaSessionClient) Listen(addrsRe *nkngomobile.StringArray) error {
 		}
 
 		go func(te *tuna.TunaExit) {
-			<-te.OnConnect.C
 			select {
-			case connected <- struct{}{}:
-			default:
+			case <-te.OnConnect.C:
+				c.connectedOnce.Do(func() {
+					close(c.onConnect)
+				})
+			case <-c.onClose:
+				return
 			}
 		}(exits[i])
 
 		go exits[i].StartReverse(true)
 	}
 
-	<-connected
-
 	c.tunaExits = exits
 
-	go c.listenNKN()
-
-	for i := 0; i < len(listeners); i++ {
-		go c.listenNet(i)
-	}
+	go func() {
+		select {
+		case <-c.onConnect:
+			go c.listenNKN()
+			for i := 0; i < len(listeners); i++ {
+				go c.listenNet(i)
+			}
+		case <-c.onClose:
+			return
+		}
+	}()
 
 	return nil
+}
+
+// OnConnect returns a channel that will be closed when at least one tuna exit
+// is connected after Listen() is first called.
+func (c *TunaSessionClient) OnConnect() chan struct{} {
+	return c.onConnect
 }
 
 // RotateOne create a new tuna exit and replace the i-th one. New connections
