@@ -293,17 +293,15 @@ func (c *TunaSessionClient) getPubAddrs(includePrice bool) *PubAddrs {
 	for _, tunaExit := range c.tunaExits {
 		ip := tunaExit.GetReverseIP().String()
 		ports := tunaExit.GetReverseTCPPorts()
-		if len(ip) == 0 || len(ports) == 0 {
-			continue
-		}
-		addr := &PubAddr{
-			IP:   ip,
-			Port: ports[0],
-		}
-		if includePrice {
-			entryToExitPrice, exitToEntryPrice := tunaExit.GetPrice()
-			addr.InPrice = entryToExitPrice.String()
-			addr.OutPrice = exitToEntryPrice.String()
+		addr := &PubAddr{}
+		if len(ip) > 0 && len(ports) > 0 {
+			addr.IP = ip
+			addr.Port = ports[0]
+			if includePrice {
+				entryToExitPrice, exitToEntryPrice := tunaExit.GetPrice()
+				addr.InPrice = entryToExitPrice.String()
+				addr.OutPrice = exitToEntryPrice.String()
+			}
 		}
 		addrs = append(addrs, addr)
 	}
@@ -543,6 +541,11 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
+
+			if pubAddrs.Addrs[i] == nil || len(pubAddrs.Addrs[i].IP) == 0 || pubAddrs.Addrs[i].Port == 0 {
+				return
+			}
+
 			netConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", pubAddrs.Addrs[i].IP, pubAddrs.Addrs[i].Port))
 			if err != nil {
 				log.Printf("Dial error: %v", err)
