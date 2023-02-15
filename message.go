@@ -3,9 +3,12 @@ package session
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"net"
+	"github.com/nknorg/nkngomobile"
+	"io"
+	"regexp"
 	"time"
 
 	"github.com/nknorg/nkn/v2/crypto/ed25519"
@@ -36,8 +39,9 @@ type PubAddrs struct {
 }
 
 func (c *TunaSessionClient) getOrComputeSharedKey(remotePublicKey []byte) (*[sharedKeySize]byte, error) {
+	k := hex.EncodeToString(remotePublicKey)
 	c.RLock()
-	sharedKey, ok := c.sharedKeys[string(remotePublicKey)]
+	sharedKey, ok := c.sharedKeys[k]
 	c.RUnlock()
 	if ok && sharedKey != nil {
 		return sharedKey, nil
@@ -62,7 +66,7 @@ func (c *TunaSessionClient) getOrComputeSharedKey(remotePublicKey []byte) (*[sha
 	box.Precompute(sharedKey, curve25519PublicKey, curveSecretKey)
 
 	c.Lock()
-	c.sharedKeys[string(remotePublicKey)] = sharedKey
+	c.sharedKeys[k] = sharedKey
 	c.Unlock()
 
 	return sharedKey, nil
@@ -116,26 +120,12 @@ func writeMessage(conn *Conn, buf []byte, writeTimeout time.Duration) error {
 	return nil
 }
 
-func readFull(conn net.Conn, buf []byte) error {
-	bytesRead := 0
-	for {
-		n, err := conn.Read(buf[bytesRead:])
-		if err != nil {
-			return err
-		}
-		bytesRead += n
-		if bytesRead == len(buf) {
-			return nil
-		}
-	}
-}
-
 func readMessage(conn *Conn, maxMsgSize uint32) ([]byte, error) {
 	conn.ReadLock.Lock()
 	defer conn.ReadLock.Unlock()
 
 	msgSizeBuf := make([]byte, 4)
-	err := readFull(conn, msgSizeBuf)
+	_, err := io.ReadFull(conn, msgSizeBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -146,10 +136,29 @@ func readMessage(conn *Conn, maxMsgSize uint32) ([]byte, error) {
 	}
 
 	buf := make([]byte, msgSize)
-	err = readFull(conn, buf)
+	_, err = io.ReadFull(conn, buf)
 	if err != nil {
 		return nil, err
 	}
 
 	return buf, nil
+}
+
+func getAcceptAddrs(addrsRe *nkngomobile.StringArray) ([]*regexp.Regexp, error) {
+	var addrs []string
+	if addrsRe == nil {
+		addrs = []string{DefaultSessionAllowAddr}
+	} else {
+		addrs = addrsRe.Elems()
+	}
+
+	var err error
+	acceptAddrs := make([]*regexp.Regexp, len(addrs))
+	for i := 0; i < len(acceptAddrs); i++ {
+		acceptAddrs[i], err = regexp.Compile(addrs[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return acceptAddrs, nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	tpb "github.com/nknorg/tuna/pb"
 	"io"
 	"log"
 	"net"
@@ -14,9 +15,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nknorg/tuna/udp"
+
 	"github.com/imdario/mergo"
-	ncp "github.com/nknorg/ncp-go"
-	nkn "github.com/nknorg/nkn-sdk-go"
+	"github.com/nknorg/ncp-go"
+	"github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/nkn-tuna-session/pb"
 	"github.com/nknorg/nkngomobile"
 	"github.com/nknorg/tuna"
@@ -125,6 +128,7 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 	service := tuna.Service{
 		Name: "session",
 		TCP:  []uint32{uint32(port)},
+		UDP:  []uint32{uint32(port)},
 	}
 
 	tunaConfig := &tuna.ExitConfiguration{
@@ -150,20 +154,9 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 }
 
 func (c *TunaSessionClient) Listen(addrsRe *nkngomobile.StringArray) error {
-	var addrs []string
-	if addrsRe == nil {
-		addrs = []string{DefaultSessionAllowAddr}
-	} else {
-		addrs = addrsRe.Elems()
-	}
-
-	var err error
-	acceptAddrs := make([]*regexp.Regexp, len(addrs))
-	for i := 0; i < len(acceptAddrs); i++ {
-		acceptAddrs[i], err = regexp.Compile(addrs[i])
-		if err != nil {
-			return err
-		}
+	acceptAddrs, err := getAcceptAddrs(addrsRe)
+	if err != nil {
+		return err
 	}
 
 	c.Lock()
@@ -260,7 +253,7 @@ func (c *TunaSessionClient) RotateOne(i int) error {
 	return nil
 }
 
-// RotateOne create and replace all tuna exit. New connections accepted will use
+// RotateAll create and replace all tuna exit. New connections accepted will use
 // new tuna exit, existing connections will not be affected.
 func (c *TunaSessionClient) RotateAll() error {
 	c.RLock()
@@ -283,6 +276,71 @@ func (c *TunaSessionClient) shouldAcceptAddr(addr string) bool {
 		}
 	}
 	return false
+}
+
+func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAddr string, config *nkn.DialConfig) (*PubAddrs, error) {
+	buf, err := json.Marshal(&Request{Action: "getPubAddr"})
+	if err != nil {
+		return nil, err
+	}
+
+	msgChan := make(chan *nkn.Message, 1)
+	errChan := make(chan error, 1)
+	doneCtx, doneCancel := context.WithCancel(ctx)
+	defer doneCancel()
+	wg := sync.WaitGroup{}
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			select {
+			case <-time.After(time.Duration(3*i) * time.Second):
+			case <-doneCtx.Done():
+				return
+			}
+			respChan, err := c.multiClient.Send(nkn.NewStringArray(remoteAddr), buf, nil)
+			if err != nil {
+				select {
+				case errChan <- err:
+				default:
+				}
+				return
+			}
+			select {
+			case msg := <-respChan.C:
+				select {
+				case msgChan <- msg:
+				default:
+				}
+				doneCancel()
+			case <-doneCtx.Done():
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(msgChan)
+	close(errChan)
+
+	msg, ok := <-msgChan
+	if !ok {
+		err, ok := <-errChan
+		if ok {
+			return nil, err
+		}
+		return nil, ctx.Err()
+	}
+
+	pubAddrs := &PubAddrs{}
+	err = json.Unmarshal(msg.Data, pubAddrs)
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range pubAddrs.Addrs {
+		if len(addr.IP) > 0 && addr.Port != 0 {
+			return pubAddrs, nil
+		}
+	}
+	return nil, errors.New("no pubAddrs available")
 }
 
 func (c *TunaSessionClient) getPubAddrs(includePrice bool) *PubAddrs {
@@ -505,25 +563,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 		defer cancel()
 	}
 
-	buf, err := json.Marshal(&Request{Action: "getPubAddr"})
-	if err != nil {
-		return nil, err
-	}
-
-	respChan, err := c.multiClient.Send(nkn.NewStringArray(remoteAddr), buf, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var msg *nkn.Message
-	select {
-	case msg = <-respChan.C:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-
-	pubAddrs := &PubAddrs{}
-	err = json.Unmarshal(msg.Data, pubAddrs)
+	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, config)
 	if err != nil {
 		return nil, err
 	}
@@ -709,7 +749,7 @@ func (c *TunaSessionClient) IsClosed() bool {
 
 func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, connIDs []string, config *ncp.Config) (*ncp.Session, error) {
 	sessKey := sessionKey(remoteAddr, sessionID)
-	return ncp.NewSession(c.addr, nkn.NewClientAddr(remoteAddr), connIDs, nil, (func(connID, _ string, buf []byte, writeTimeout time.Duration) error {
+	return ncp.NewSession(c.addr, nkn.NewClientAddr(remoteAddr), connIDs, nil, func(connID, _ string, buf []byte, writeTimeout time.Duration) error {
 		c.RLock()
 		conn := c.sessionConns[sessKey][connID]
 		c.RUnlock()
@@ -727,7 +767,7 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 			return ncp.ErrConnClosed
 		}
 		return nil
-	}), config)
+	}, config)
 }
 
 func (c *TunaSessionClient) handleMsg(conn *Conn, sess *ncp.Session, i int) error {
@@ -817,4 +857,104 @@ func (c *TunaSessionClient) removeClosedSessions() {
 		}
 		c.Unlock()
 	}
+}
+
+func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*udp.EncryptUDPConn, error) {
+	acceptAddrs, err := getAcceptAddrs(addrsRe)
+	if err != nil {
+		return nil, err
+	}
+	c.acceptAddrs = acceptAddrs
+
+	if c.wallet == nil {
+		return nil, errors.New("wallet is empty")
+	}
+
+	host, portStr, err := net.SplitHostPort(c.listeners[0].Addr().String())
+	if err != nil {
+		return nil, err
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(host), Port: port})
+	if err != nil {
+		return nil, err
+	}
+	return udp.NewEncryptUDPConn(conn), nil
+}
+
+func (c *TunaSessionClient) DialUDP(remoteAddr string) (*udp.EncryptUDPConn, error) {
+	return c.DialUDPWithConfig(remoteAddr, nil)
+}
+
+func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.DialConfig) (*udp.EncryptUDPConn, error) {
+	config, err := nkn.MergeDialConfig(c.config.SessionConfig, config)
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.Background()
+	var cancel context.CancelFunc
+	if config.DialTimeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.DialTimeout)*time.Millisecond)
+		defer cancel()
+	}
+	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, config)
+	if err != nil {
+		return nil, err
+	}
+	remotePublicKey, err := nkn.ClientAddrToPubKey(remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+	_, err = c.getOrComputeSharedKey(remotePublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	udpConn := new(udp.EncryptUDPConn)
+	for i, addr := range pubAddrs.Addrs {
+		if len(addr.IP) > 0 && addr.Port > 0 {
+			udpAddr := net.UDPAddr{IP: net.ParseIP(addr.IP), Port: int(addr.Port)}
+			conn, err := net.DialUDP("udp", nil, &udpAddr)
+			if err != nil {
+				if i == len(pubAddrs.Addrs)-1 {
+					return nil, err
+				}
+				log.Printf("dial udp err: %v", err)
+				continue
+			}
+			udpConn = udp.NewEncryptUDPConn(conn)
+			break
+		}
+	}
+	host, portStr, err := net.SplitHostPort(udpConn.LocalAddr().String())
+	if err != nil {
+		return nil, err
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return nil, err
+	}
+	err = udpConn.AddCodec(&net.UDPAddr{IP: net.ParseIP(host), Port: port}, c.sharedKeys[remoteAddr], tpb.EncryptionAlgo_ENCRYPTION_XSALSA20_POLY1305, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return udpConn, nil
+}
+
+func (c *TunaSessionClient) ServicePort() (int, error) {
+	for _, te := range c.tunaExits {
+		ip := te.GetReverseIP().String()
+		ports := te.GetReverseTCPPorts()
+		if len(ip) > 0 && len(ports) > 0 {
+			if len(te.ReverseMetadata.ServiceUdp) > 0 {
+				return int(te.ReverseMetadata.ServiceUdp[0]), nil
+			}
+		}
+	}
+	return 0, errors.New("no tuna exit available")
 }
