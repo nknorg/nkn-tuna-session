@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	tpb "github.com/nknorg/tuna/pb"
 	"io"
 	"log"
 	"net"
@@ -15,14 +14,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nknorg/tuna/udp"
-
 	"github.com/imdario/mergo"
 	"github.com/nknorg/ncp-go"
 	"github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/nkn-tuna-session/pb"
 	"github.com/nknorg/nkngomobile"
 	"github.com/nknorg/tuna"
+	tpb "github.com/nknorg/tuna/pb"
+	"github.com/nknorg/tuna/udp"
 	gocache "github.com/patrickmn/go-cache"
 	"google.golang.org/protobuf/proto"
 )
@@ -33,6 +32,10 @@ const (
 	acceptSessionBufSize            = 1024
 	closedSessionKeyExpiration      = 5 * time.Minute
 	closedSessionKeyCleanupInterval = time.Minute
+)
+
+var (
+	ErrClosed = errors.New("tuna session is closed")
 )
 
 type TunaSessionClient struct {
@@ -71,8 +74,8 @@ func NewTunaSessionClient(clientAccount *nkn.Account, m *nkn.MultiClient, wallet
 		wallet:           wallet,
 		addr:             m.Addr(),
 		acceptSession:    make(chan *ncp.Session, acceptSessionBufSize),
-		onConnect:        make(chan struct{}, 0),
-		onClose:          make(chan struct{}, 0),
+		onConnect:        make(chan struct{}),
+		onClose:          make(chan struct{}),
 		sessions:         make(map[string]*ncp.Session),
 		sessionConns:     make(map[string]map[string]*Conn),
 		sharedKeys:       make(map[string]*[sharedKeySize]byte),
@@ -278,7 +281,7 @@ func (c *TunaSessionClient) shouldAcceptAddr(addr string) bool {
 	return false
 }
 
-func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAddr string, config *nkn.DialConfig) (*PubAddrs, error) {
+func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAddr string) (*PubAddrs, error) {
 	buf, err := json.Marshal(&Request{Action: "getPubAddr"})
 	if err != nil {
 		return nil, err
@@ -473,10 +476,6 @@ func (c *TunaSessionClient) listenNet(i int) {
 				c.sessions[sessKey] = sess
 				c.sessionConns[sessKey] = make(map[string]*Conn, c.config.NumTunaListeners)
 			}
-			if _, ok := c.sessionConns[sessKey][connID(i)]; ok {
-				c.Unlock()
-				return
-			}
 			c.sessionConns[sessKey][connID(i)] = conn
 			c.Unlock()
 
@@ -563,7 +562,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 		defer cancel()
 	}
 
-	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, config)
+	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -573,88 +572,69 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 		return nil, err
 	}
 
-	var lock sync.Mutex
 	var wg sync.WaitGroup
-	conns := make(map[string]*Conn, len(pubAddrs.Addrs))
-	dialer := &net.Dialer{}
 	for i := range pubAddrs.Addrs {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 
-			if pubAddrs.Addrs[i] == nil || len(pubAddrs.Addrs[i].IP) == 0 || pubAddrs.Addrs[i].Port == 0 {
-				return
-			}
-
-			netConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", pubAddrs.Addrs[i].IP, pubAddrs.Addrs[i].Port))
+			_, err = c.dialAConn(ctx, remoteAddr, sessionID, i, pubAddrs.Addrs[i], config)
 			if err != nil {
-				log.Printf("Dial error: %v", err)
+				log.Printf("Tuna session dial to ip %v port %v err: %v", pubAddrs.Addrs[i].IP, pubAddrs.Addrs[i].Port, err)
 				return
 			}
-
-			conn := newConn(netConn)
-
-			err = writeMessage(conn, []byte(c.addr.String()), time.Duration(config.DialTimeout)*time.Millisecond)
-			if err != nil {
-				log.Printf("Write message error: %v", err)
-				conn.Close()
-				return
-			}
-
-			metadata := &pb.SessionMetadata{
-				Id: sessionID,
-			}
-			metadataRaw, err := proto.Marshal(metadata)
-			if err != nil {
-				log.Printf("Encode session metadata error: %v", err)
-				conn.Close()
-				return
-			}
-
-			buf, err := c.encode(metadataRaw, remoteAddr)
-			if err != nil {
-				log.Printf("Encode message error: %v", err)
-				conn.Close()
-				return
-			}
-
-			err = writeMessage(conn, buf, time.Duration(config.DialTimeout)*time.Millisecond)
-			if err != nil {
-				log.Printf("Write message error: %v", err)
-				conn.Close()
-				return
-			}
-
-			lock.Lock()
-			conns[connID(i)] = conn
-			lock.Unlock()
 		}(i)
 	}
-	wg.Wait()
 
+	wg.Wait()
+	sessKey := sessionKey(remoteAddr, sessionID)
+
+	c.RLock()
+	conns := c.sessionConns[sessKey]
+	if len(conns) == 0 {
+		c.RUnlock()
+		return nil, err
+	}
 	connIDs := make([]string, 0, len(conns))
 	for i := 0; i < len(pubAddrs.Addrs); i++ {
 		if _, ok := conns[connID(i)]; ok {
 			connIDs = append(connIDs, connID(i))
 		}
 	}
+	c.RUnlock()
 
-	sessKey := sessionKey(remoteAddr, sessionID)
 	sess, err := c.newSession(remoteAddr, sessionID, connIDs, config.SessionConfig)
 	if err != nil {
 		return nil, err
 	}
-
 	c.Lock()
 	c.sessions[sessKey] = sess
-	c.sessionConns[sessKey] = conns
 	c.Unlock()
 
 	for i := 0; i < len(pubAddrs.Addrs); i++ {
-		if conn, ok := conns[connID(i)]; ok {
+		c.RLock()
+		conn, ok := conns[connID(i)]
+		c.RUnlock()
+		if ok {
 			go func(conn *Conn, i int) {
 				defer conn.Close()
-				c.handleConn(conn, sessKey, i)
+				for {
+					c.handleConn(conn, sessKey, i)
+
+					if c.config.ReconnectRetries == 0 {
+						return
+					}
+					for j := 0; c.config.ReconnectRetries < 0 || j < c.config.ReconnectRetries; j++ {
+						var err error
+						if conn, err = c.reconnect(remoteAddr, sessionID, i, pubAddrs, config); err == nil {
+							break
+						}
+						if err == ErrClosed || err == ncp.ErrSessionClosed {
+							return
+						}
+						time.Sleep(time.Duration(c.config.ReconnectInterval) * time.Millisecond)
+					}
+				}
 			}(conn, i)
 		}
 	}
@@ -764,7 +744,7 @@ func (c *TunaSessionClient) newSession(remoteAddr string, sessionID []byte, conn
 		if err != nil {
 			log.Println("Write message error:", err)
 			conn.Close()
-			return ncp.ErrConnClosed
+			return err // ncp.ErrConnClosed
 		}
 		return nil
 	}, config)
@@ -790,6 +770,9 @@ func (c *TunaSessionClient) handleMsg(conn *Conn, sess *ncp.Session, i int) erro
 }
 
 func (c *TunaSessionClient) handleConn(conn *Conn, sessKey string, i int) {
+	if conn == nil {
+		return
+	}
 	c.Lock()
 	sess := c.sessions[sessKey]
 	if sess == nil {
@@ -901,7 +884,7 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.DialTimeout)*time.Millisecond)
 		defer cancel()
 	}
-	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, config)
+	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -957,4 +940,100 @@ func (c *TunaSessionClient) ServicePort() (int, error) {
 		}
 	}
 	return 0, errors.New("no tuna exit available")
+}
+
+func (c *TunaSessionClient) dialAConn(ctx context.Context, remoteAddr string, sessionID []byte, i int, addr *PubAddr, config *nkn.DialConfig) (conn *Conn, err error) {
+	if addr == nil || len(addr.IP) == 0 || addr.Port == 0 {
+		return nil, fmt.Errorf("dialAConn wrong params addr")
+	}
+
+	dialer := &net.Dialer{}
+	netConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", addr.IP, addr.Port))
+	if err != nil {
+		return nil, err
+	}
+	conn = newConn(netConn)
+
+	err = writeMessage(conn, []byte(c.addr.String()), time.Duration(config.DialTimeout)*time.Millisecond)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	metadata := &pb.SessionMetadata{
+		Id: sessionID,
+	}
+	metadataRaw, err := proto.Marshal(metadata)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	buf, err := c.encode(metadataRaw, remoteAddr)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	err = writeMessage(conn, buf, time.Duration(config.DialTimeout)*time.Millisecond)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	sessKey := sessionKey(remoteAddr, sessionID)
+	c.Lock()
+	conns, ok := c.sessionConns[sessKey]
+	if !ok {
+		conns = make(map[string]*Conn)
+	}
+	conns[connID(i)] = conn
+	c.sessionConns[sessKey] = conns
+	c.Unlock()
+
+	return conn, nil
+}
+
+func (c *TunaSessionClient) reconnect(remoteAddr string, sessionID []byte, i int, pubAddrs *PubAddrs, config *nkn.DialConfig) (conn *Conn, err error) {
+	if c.IsClosed() {
+		return nil, ErrClosed
+	}
+	sessKey := sessionKey(remoteAddr, sessionID)
+	c.RLock()
+	sess := c.sessions[sessKey]
+	c.RUnlock()
+	if sess == nil || sess.IsClosed() {
+		return nil, ncp.ErrSessionClosed
+	}
+
+	ctx := context.Background()
+	var cancel context.CancelFunc
+	if config.DialTimeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.DialTimeout)*time.Millisecond)
+		defer cancel()
+	}
+
+	newPubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+	if len(newPubAddrs.Addrs) > i {
+		conn, err = c.dialAConn(ctx, remoteAddr, sessionID, i, newPubAddrs.Addrs[i], config)
+		if err == nil {
+			return conn, nil
+		}
+	}
+	return nil, err
+}
+
+func (c *TunaSessionClient) CloseOneConn(sess *ncp.Session, connId string) {
+	c.RLock()
+	defer c.RUnlock()
+	for key, s := range c.sessions {
+		if s == sess {
+			conn := c.sessionConns[key][connId]
+			conn.Close()
+			break
+		}
+	}
 }

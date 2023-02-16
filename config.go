@@ -24,6 +24,8 @@ type Config struct {
 	TunaMeasureBandwidth   bool
 	TunaMeasureStoragePath string
 	SessionConfig          *ncp.Config
+	ReconnectRetries       int // negative value: unlimited retries, 0: no reconnect, positive value: limit retries.
+	ReconnectInterval      int // millisecond
 }
 
 var defaultConfig = Config{
@@ -42,6 +44,8 @@ var defaultConfig = Config{
 	TunaMeasureBandwidth:   false,
 	TunaMeasureStoragePath: "",
 	SessionConfig:          nil,
+	ReconnectRetries:       0,
+	ReconnectInterval:      2000,
 }
 
 func DefaultConfig() *Config {
