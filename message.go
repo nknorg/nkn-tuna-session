@@ -6,10 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/nknorg/nkngomobile"
 	"io"
 	"regexp"
 	"time"
+
+	"github.com/nknorg/nkngomobile"
 
 	"github.com/nknorg/nkn/v2/crypto/ed25519"
 	"golang.org/x/crypto/nacl/box"
@@ -21,10 +22,13 @@ const (
 	maxAddrSize            = 512
 	maxSessionMetadataSize = 1024
 	maxSessionMsgOverhead  = 1024
+
+	ActionGetPubAddr = "getPubAddr"
 )
 
 type Request struct {
-	Action string `json:"action"`
+	Action    string `json:"action"`
+	SessionID []byte `json:"sessionID"`
 }
 
 type PubAddr struct {
@@ -35,7 +39,8 @@ type PubAddr struct {
 }
 
 type PubAddrs struct {
-	Addrs []*PubAddr `json:"addrs"`
+	Addrs         []*PubAddr `json:"addrs"`
+	SessionClosed bool       `json:"sessionClosed"`
 }
 
 func (c *TunaSessionClient) getOrComputeSharedKey(remotePublicKey []byte) (*[sharedKeySize]byte, error) {

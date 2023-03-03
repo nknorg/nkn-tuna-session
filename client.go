@@ -34,7 +34,8 @@ const (
 )
 
 var (
-	ErrClosed = errors.New("tuna session is closed")
+	ErrClosed    = errors.New("tuna session is closed")
+	ErrNoPubAddr = errors.New("no public address avalaible")
 )
 
 type TunaSessionClient struct {
@@ -237,8 +238,8 @@ func (c *TunaSessionClient) shouldAcceptAddr(addr string) bool {
 	return false
 }
 
-func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAddr string) (*PubAddrs, error) {
-	buf, err := json.Marshal(&Request{Action: "getPubAddr"})
+func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAddr string, sessionID []byte) (*PubAddrs, error) {
+	buf, err := json.Marshal(&Request{Action: ActionGetPubAddr, SessionID: sessionID})
 	if err != nil {
 		return nil, err
 	}
@@ -294,12 +295,16 @@ func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAdd
 	if err != nil {
 		return nil, err
 	}
+	if pubAddrs.SessionClosed {
+		return nil, ErrClosed
+	}
+
 	for _, addr := range pubAddrs.Addrs {
 		if len(addr.IP) > 0 && addr.Port != 0 {
 			return pubAddrs, nil
 		}
 	}
-	return nil, errors.New("no pubAddrs available")
+	return nil, ErrNoPubAddr
 }
 
 func (c *TunaSessionClient) getPubAddrs(includePrice bool) *PubAddrs {
@@ -335,6 +340,7 @@ func (c *TunaSessionClient) listenNKN() {
 		if !c.shouldAcceptAddr(msg.Src) {
 			continue
 		}
+
 		req := &Request{}
 		err := json.Unmarshal(msg.Data, req)
 		if err != nil {
@@ -342,11 +348,13 @@ func (c *TunaSessionClient) listenNKN() {
 			continue
 		}
 		switch strings.ToLower(req.Action) {
-		case "getpubaddr":
-			pubAddrs := c.getPubAddrs(false)
-			if len(pubAddrs.Addrs) == 0 {
-				log.Println("No entry available")
-				continue
+		case strings.ToLower(ActionGetPubAddr):
+			pubAddrs := &PubAddrs{}
+			sessKey := sessionKey(msg.Src, req.SessionID)
+			if c.IsNcpSessClosed(sessKey) {
+				pubAddrs.SessionClosed = true
+			} else {
+				pubAddrs = c.getPubAddrs(false)
 			}
 			buf, err := json.Marshal(pubAddrs)
 			if err != nil {
@@ -518,12 +526,12 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 		defer cancel()
 	}
 
-	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr)
+	sessionID, err := nkn.RandomBytes(SessionIDSize)
 	if err != nil {
 		return nil, err
 	}
 
-	sessionID, err := nkn.RandomBytes(SessionIDSize)
+	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -905,7 +913,7 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.DialTimeout)*time.Millisecond)
 		defer cancel()
 	}
-	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr)
+	pubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -980,6 +988,7 @@ func (c *TunaSessionClient) dialAConn(ctx context.Context, remoteAddr string, se
 		conn.Close()
 		return nil, err
 	}
+	fmt.Println("dialAConn, c.addr is ", c.addr.String())
 
 	metadata := &pb.SessionMetadata{
 		Id: sessionID,
@@ -1027,17 +1036,20 @@ func (c *TunaSessionClient) reconnect(remoteAddr string, sessionID []byte, i int
 		return nil, ncp.ErrSessionClosed
 	}
 
-	ctx := context.Background()
-	var cancel context.CancelFunc
+	ctx, cancel := context.WithCancel(sess.GetContext())
 	if config.DialTimeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.DialTimeout)*time.Millisecond)
-		defer cancel()
 	}
+	defer cancel()
 
-	newPubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr)
-	if err != nil {
+	newPubAddrs, err := c.getPubAddrsFromRemote(ctx, remoteAddr, sessionID)
+	if err == ErrClosed {
+		sess.Close()
+		return nil, ErrClosed
+	} else if err != nil {
 		return nil, err
 	}
+
 	if len(newPubAddrs.Addrs) > i {
 		conn, err = c.dialAConn(ctx, remoteAddr, sessionID, i, newPubAddrs.Addrs[i], config)
 		if err == nil {
@@ -1057,4 +1069,17 @@ func (c *TunaSessionClient) CloseOneConn(sess *ncp.Session, connId string) {
 			break
 		}
 	}
+}
+
+func (c *TunaSessionClient) IsNcpSessClosed(sessKey string) bool {
+	c.RLock()
+	defer c.RUnlock()
+	sess, ok := c.sessions[sessKey]
+	if ok {
+		return sess.IsClosed()
+	}
+	if _, ok := c.closedSessionKey.Get(sessKey); ok {
+		return true
+	}
+	return false
 }
