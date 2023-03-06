@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"github.com/nknorg/ncp-go"
 	"github.com/nknorg/nkn-sdk-go"
@@ -14,6 +15,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -102,20 +104,6 @@ func TestTunaSession(t *testing.T) {
 		}
 	}()
 
-	go func() {
-		buffer := make([]byte, 65536)
-		for {
-			n, addr, err := uConn.ReadFromUDP(buffer)
-			if err != nil {
-				t.Fatal(err)
-			}
-			n, _, err = uConn.WriteMsgUDP(buffer[:n], nil, addr)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-	}()
-
 	mm, err := nkn.NewMultiClient(account2, dialID, 4, false, clientConfig)
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +136,7 @@ func TestTunaSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = testUDP(udpConn)
+	err = testUDP(udpConn, uConn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,16 +157,56 @@ func testTCP(conn net.Conn) error {
 	return nil
 }
 
-func testUDP(conn *udp.EncryptUDPConn) error {
-	send := make([]byte, 4096)
-	receive := make([]byte, 4096)
-	for i := 0; i < 10; i++ {
-		rand.Read(send)
-		conn.WriteMsgUDP(send, nil, nil)
-		conn.ReadFromUDP(receive)
-		if !bytes.Equal(send, receive) {
-			return errors.New("bytes not equal")
+func testUDP(from, to *udp.EncryptUDPConn) error {
+	count := 1000
+	sendList := make([]string, count)
+	recvList := make([]string, count)
+	sendNum := 0
+	recvNum := 0
+	var wg sync.WaitGroup
+	var e error
+	go func() {
+		wg.Add(1)
+		receive := make([]byte, 1024)
+		for i := 0; i < count; i++ {
+			_, _, err := to.ReadFromUDP(receive)
+			if err != nil {
+				e = err
+				return
+			}
+			recvNum++
+			recvList = append(recvList, hex.EncodeToString(receive))
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		send := make([]byte, 1024)
+		wg.Add(1)
+		for i := 0; i < count; i++ {
+			rand.Read(send)
+			_, _, err := from.WriteMsgUDP(send, nil, nil)
+			if err != nil {
+				e = err
+				return
+			}
+			sendNum++
+			sendList = append(sendList, hex.EncodeToString(send))
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+	if sendNum != recvNum {
+		return errors.New("package lost")
+	}
+
+	for i := 0; i < sendNum; i++ {
+		if sendList[i] != recvList[i] {
+			return errors.New("data mismatch")
 		}
 	}
-	return nil
+
+	return e
 }
