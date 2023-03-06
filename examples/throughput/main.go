@@ -1,10 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/nknorg/tuna/udp"
 	"log"
 	"math"
 	"net"
@@ -12,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	ncp "github.com/nknorg/ncp-go"
-	nkn "github.com/nknorg/nkn-sdk-go"
+	"github.com/nknorg/ncp-go"
+	"github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
 	"github.com/nknorg/tuna/geo"
 )
@@ -22,6 +24,9 @@ const (
 	dialID   = "alice"
 	listenID = "bob"
 )
+
+var udpBytesReceived = 0
+var udpBytesSend = 0
 
 func read(sess net.Conn) error {
 	timeStart := time.Now()
@@ -95,6 +100,60 @@ func write(sess net.Conn, numBytes int) error {
 	return nil
 }
 
+func readUDP(conn *udp.EncryptUDPConn, numBytes int) error {
+	defer conn.Close()
+	buffer := make([]byte, 1024)
+	var timeStart time.Time
+	for {
+		n, _, err := conn.ReadFromUDP(buffer)
+		if udpBytesReceived == 0 {
+			timeStart = time.Now()
+		}
+		if err != nil {
+			return err
+		}
+		udpBytesReceived += n
+		if ((udpBytesReceived - n) * 10 / numBytes) != (udpBytesReceived * 10 / numBytes) {
+			mbTobytes := math.Pow(2, 20)
+			sent := float64(udpBytesSend) / mbTobytes
+			received := float64(udpBytesReceived) / mbTobytes
+			timeEnd := time.Now()
+			elapsed := timeEnd.Sub(timeStart)
+			speed := received / elapsed.Seconds()
+			log.Printf("UDP: Received %.2f MB bytes, speed: %.2f MB/s, package loss:  %.2f%% \n", received, speed, 100*(1-received/sent))
+		}
+	}
+}
+
+func writeUDP(conn *udp.EncryptUDPConn, numBytes int) error {
+	defer conn.Close()
+	buffer := make([]byte, 1024)
+	timeStart := time.Now()
+	for {
+		rand.Read(buffer)
+		n, _, err := conn.WriteMsgUDP(buffer, nil, nil)
+		if err != nil {
+			return err
+		}
+		time.Sleep(100 * time.Nanosecond)
+		udpBytesSend += n
+		if udpBytesSend > numBytes {
+			break
+		}
+		if ((udpBytesSend - n) * 10 / numBytes) != (udpBytesSend * 10 / numBytes) {
+			mbTobytes := math.Pow(2, 20)
+			sent := float64(udpBytesSend) / mbTobytes
+			received := float64(udpBytesReceived) / mbTobytes
+			timeEnd := time.Now()
+			elapsed := timeEnd.Sub(timeStart)
+			speed := sent / elapsed.Seconds()
+			log.Printf("UDP: Sent %.2f MB bytes, speed: %.2f MB/s, package loss:  %.2f%% \n", sent, speed, 100*(1-received/sent))
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	numTunaListeners := flag.Int("n", 1, "number of tuna listeners")
 	numBytes := flag.Int("m", 1, "data to send (MB)")
@@ -109,6 +168,7 @@ func main() {
 	tunaMeasureBandwidth := flag.Bool("tmb", false, "tuna measure bandwidth")
 	tunaMaxPrice := flag.String("price", "0.01", "tuna reverse service max price in unit of NKN/MB")
 	mtu := flag.Int("mtu", 0, "ncp session mtu")
+	u := flag.Bool("u", false, "send data through UDP instead TCP")
 
 	flag.Parse()
 
@@ -162,32 +222,43 @@ func main() {
 			log.Fatal(err)
 		}
 
-		err = c.Listen(nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		<-c.OnConnect()
-
-		log.Println("Listening at", c.Addr())
-
-		go func() {
-			for {
-				s, err := c.Accept()
+		if *u {
+			uConn, err := c.ListenUDP(nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Println("Listening UDP at", c.Addr())
+			go func() {
+				err = readUDP(uConn, *numBytes)
 				if err != nil {
 					log.Fatal(err)
 				}
-				log.Println(c.Addr(), "accepted a session")
-
-				go func(s net.Conn) {
-					err := read(s)
+			}()
+		} else {
+			err = c.Listen(nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Println("Listening at", c.Addr())
+			go func() {
+				for {
+					s, err := c.Accept()
 					if err != nil {
 						log.Fatal(err)
 					}
-					s.Close()
-				}(s)
-			}
-		}()
+					log.Println(c.Addr(), "accepted a session")
+
+					go func(s net.Conn) {
+						err := read(s)
+						if err != nil {
+							log.Fatal(err)
+						}
+						s.Close()
+					}(s)
+				}
+			}()
+		}
+		<-c.OnConnect()
 	}
 
 	if *dial {
@@ -208,24 +279,38 @@ func main() {
 			*dialAddr = listenID + "." + strings.SplitN(c.Addr().String(), ".", 2)[1]
 		}
 
-		s, err := c.DialWithConfig(*dialAddr, dialConfig)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println(c.Addr(), "dialed a session")
-
-		go func() {
-			err := write(s, *numBytes)
+		if *u {
+			udpConn, err := c.DialUDPWithConfig(*dialAddr, dialConfig)
 			if err != nil {
 				log.Fatal(err)
 			}
-			for {
-				if s.IsClosed() {
-					os.Exit(0)
+			log.Println(c.Addr(), "dialed a UDP session")
+			go func() {
+				err := writeUDP(udpConn, *numBytes)
+				if err != nil {
+					log.Fatal(err)
 				}
-				time.Sleep(time.Millisecond * 100)
+			}()
+		} else {
+			s, err := c.DialWithConfig(*dialAddr, dialConfig)
+			if err != nil {
+				log.Fatal(err)
 			}
-		}()
+			log.Println(c.Addr(), "dialed a session")
+
+			go func() {
+				err := write(s, *numBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+				for {
+					if s.IsClosed() {
+						os.Exit(0)
+					}
+					time.Sleep(time.Millisecond * 100)
+				}
+			}()
+		}
 	}
 
 	select {}
