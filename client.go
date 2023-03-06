@@ -48,6 +48,7 @@ type TunaSessionClient struct {
 	onConnect     chan struct{}
 	onClose       chan struct{}
 	connectedOnce sync.Once
+	udpConn       *udp.EncryptUDPConn
 
 	sync.RWMutex
 	listeners        []net.Listener
@@ -175,51 +176,7 @@ func (c *TunaSessionClient) Listen(addrsRe *nkngomobile.StringArray) error {
 		return errors.New("wallet is empty")
 	}
 
-	listeners := make([]net.Listener, c.config.NumTunaListeners)
-	for i := 0; i < len(listeners); i++ {
-		listeners[i], err = net.Listen("tcp", "127.0.0.1:")
-		if err != nil {
-			return err
-		}
-	}
-	c.listeners = listeners
-
-	exits := make([]*tuna.TunaExit, c.config.NumTunaListeners)
-	for i := 0; i < len(listeners); i++ {
-		exits[i], err = c.newTunaExit(i)
-		if err != nil {
-			return err
-		}
-
-		go func(te *tuna.TunaExit) {
-			select {
-			case <-te.OnConnect.C:
-				c.connectedOnce.Do(func() {
-					close(c.onConnect)
-				})
-			case <-c.onClose:
-				return
-			}
-		}(exits[i])
-
-		go exits[i].StartReverse(true)
-	}
-
-	c.tunaExits = exits
-
-	go func() {
-		select {
-		case <-c.onConnect:
-			go c.listenNKN()
-			for i := 0; i < len(listeners); i++ {
-				go c.listenNet(i)
-			}
-		case <-c.onClose:
-			return
-		}
-	}()
-
-	return nil
+	return c.startExits()
 }
 
 // OnConnect returns a channel that will be closed when at least one tuna exit
@@ -842,15 +799,78 @@ func (c *TunaSessionClient) removeClosedSessions() {
 	}
 }
 
+func (c *TunaSessionClient) startExits() error {
+	if len(c.tunaExits) > 0 {
+		return nil
+	}
+	listeners := make([]net.Listener, c.config.NumTunaListeners)
+	var err error
+	for i := 0; i < len(listeners); i++ {
+		listeners[i], err = net.Listen("tcp", "127.0.0.1:")
+		if err != nil {
+			return err
+		}
+	}
+	c.listeners = listeners
+
+	exits := make([]*tuna.TunaExit, c.config.NumTunaListeners)
+	for i := 0; i < len(listeners); i++ {
+		exits[i], err = c.newTunaExit(i)
+		if err != nil {
+			return err
+		}
+
+		go func(te *tuna.TunaExit) {
+			select {
+			case <-te.OnConnect.C:
+				c.connectedOnce.Do(func() {
+					close(c.onConnect)
+				})
+			case <-c.onClose:
+				return
+			}
+		}(exits[i])
+
+		go exits[i].StartReverse(true)
+	}
+	c.tunaExits = exits
+	go func() {
+		select {
+		case <-c.onConnect:
+			go c.listenNKN()
+			for i := 0; i < len(listeners); i++ {
+				go c.listenNet(i)
+			}
+		case <-c.onClose:
+			return
+		}
+	}()
+
+	return nil
+}
+
 func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*udp.EncryptUDPConn, error) {
 	acceptAddrs, err := getAcceptAddrs(addrsRe)
 	if err != nil {
 		return nil, err
 	}
+
+	c.Lock()
+	defer c.Unlock()
+
 	c.acceptAddrs = acceptAddrs
+
+	if c.udpConn != nil {
+		return c.udpConn, nil
+	}
 
 	if c.wallet == nil {
 		return nil, errors.New("wallet is empty")
+	}
+
+	err = c.startExits()
+	if err != nil {
+		return nil, err
 	}
 
 	host, portStr, err := net.SplitHostPort(c.listeners[0].Addr().String())
@@ -866,7 +886,9 @@ func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*udp.En
 	if err != nil {
 		return nil, err
 	}
-	return udp.NewEncryptUDPConn(conn), nil
+
+	c.udpConn = udp.NewEncryptUDPConn(conn)
+	return c.udpConn, nil
 }
 
 func (c *TunaSessionClient) DialUDP(remoteAddr string) (*udp.EncryptUDPConn, error) {
