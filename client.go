@@ -21,7 +21,6 @@ import (
 	"github.com/nknorg/nkngomobile"
 	"github.com/nknorg/tuna"
 	tpb "github.com/nknorg/tuna/pb"
-	"github.com/nknorg/tuna/udp"
 	gocache "github.com/patrickmn/go-cache"
 	"google.golang.org/protobuf/proto"
 )
@@ -48,7 +47,7 @@ type TunaSessionClient struct {
 	onConnect     chan struct{}
 	onClose       chan struct{}
 	connectedOnce sync.Once
-	udpConn       *udp.EncryptUDPConn
+	udpConn       *tuna.EncryptUDPConn
 
 	sync.RWMutex
 	listeners        []net.Listener
@@ -849,7 +848,7 @@ func (c *TunaSessionClient) startExits() error {
 	return nil
 }
 
-func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*udp.EncryptUDPConn, error) {
+func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*tuna.EncryptUDPConn, error) {
 	acceptAddrs, err := getAcceptAddrs(addrsRe)
 	if err != nil {
 		return nil, err
@@ -887,15 +886,15 @@ func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*udp.En
 		return nil, err
 	}
 
-	c.udpConn = udp.NewEncryptUDPConn(conn)
+	c.udpConn = tuna.NewEncryptUDPConn(conn)
 	return c.udpConn, nil
 }
 
-func (c *TunaSessionClient) DialUDP(remoteAddr string) (*udp.EncryptUDPConn, error) {
+func (c *TunaSessionClient) DialUDP(remoteAddr string) (*tuna.EncryptUDPConn, error) {
 	return c.DialUDPWithConfig(remoteAddr, nil)
 }
 
-func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.DialConfig) (*udp.EncryptUDPConn, error) {
+func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.DialConfig) (*tuna.EncryptUDPConn, error) {
 	config, err := nkn.MergeDialConfig(c.config.SessionConfig, config)
 	if err != nil {
 		return nil, err
@@ -919,7 +918,7 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 		return nil, err
 	}
 
-	udpConn := new(udp.EncryptUDPConn)
+	udpConn := new(tuna.EncryptUDPConn)
 	for i, addr := range pubAddrs.Addrs {
 		if len(addr.IP) > 0 && addr.Port > 0 {
 			udpAddr := net.UDPAddr{IP: net.ParseIP(addr.IP), Port: int(addr.Port)}
@@ -931,7 +930,7 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 				log.Printf("dial udp err: %v", err)
 				continue
 			}
-			udpConn = udp.NewEncryptUDPConn(conn)
+			udpConn = tuna.NewEncryptUDPConn(conn)
 			break
 		}
 	}
