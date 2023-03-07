@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/nknorg/tuna"
 	"log"
 	"math"
 	"net"
@@ -17,6 +16,7 @@ import (
 	"github.com/nknorg/ncp-go"
 	"github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
+	"github.com/nknorg/tuna"
 	"github.com/nknorg/tuna/geo"
 )
 
@@ -272,7 +272,7 @@ func main() {
 		}
 
 		<-m.OnConnect.C
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		c, err := ts.NewTunaSessionClient(account, m, wallet, config)
 		if err != nil {
