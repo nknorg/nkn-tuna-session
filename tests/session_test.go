@@ -9,8 +9,8 @@ import (
 	"github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
 	"github.com/nknorg/nkn/v2/crypto"
+	"github.com/nknorg/tuna"
 	_ "github.com/nknorg/tuna/tests"
-	"github.com/nknorg/tuna/udp"
 	"io"
 	"net"
 	"os"
@@ -157,7 +157,7 @@ func testTCP(conn net.Conn) error {
 	return nil
 }
 
-func testUDP(from, to *udp.EncryptUDPConn) error {
+func testUDP(from, to *tuna.EncryptUDPConn) error {
 	count := 1000
 	sendList := make([]string, count)
 	recvList := make([]string, count)

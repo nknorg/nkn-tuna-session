@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/nknorg/tuna/udp"
+	"github.com/nknorg/tuna"
 	"log"
 	"math"
 	"net"
@@ -100,11 +100,15 @@ func write(sess net.Conn, numBytes int) error {
 	return nil
 }
 
-func readUDP(conn *udp.EncryptUDPConn, numBytes int) error {
+func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 	defer conn.Close()
 	buffer := make([]byte, 1024)
 	var timeStart time.Time
 	for {
+		err := conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		if err != nil {
+			return err
+		}
 		n, _, err := conn.ReadFromUDP(buffer)
 		if udpBytesReceived == 0 {
 			timeStart = time.Now()
@@ -125,7 +129,7 @@ func readUDP(conn *udp.EncryptUDPConn, numBytes int) error {
 	}
 }
 
-func writeUDP(conn *udp.EncryptUDPConn, numBytes int) error {
+func writeUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 	defer conn.Close()
 	buffer := make([]byte, 1024)
 	timeStart := time.Now()

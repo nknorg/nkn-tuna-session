@@ -8,7 +8,7 @@ require (
 	github.com/nknorg/nkn-sdk-go v1.4.3
 	github.com/nknorg/nkn/v2 v2.1.8
 	github.com/nknorg/nkngomobile v0.0.0-20220615081414-671ad1afdfa9
-	github.com/nknorg/tuna v0.0.0-20230224012633-b53aa9c90cd5
+	github.com/nknorg/tuna v0.0.0-20230307074911-ced36707f273
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	google.golang.org/protobuf v1.27.1
