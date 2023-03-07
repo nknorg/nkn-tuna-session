@@ -5,6 +5,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"io"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/nknorg/ncp-go"
 	"github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
@@ -15,14 +24,6 @@ import (
 	_ "github.com/nknorg/tuna/tests"
 	"github.com/nknorg/tuna/types"
 	"github.com/nknorg/tuna/util"
-	"io"
-	"net"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 const (
@@ -193,7 +194,7 @@ func testTCP(conn net.Conn) error {
 	return nil
 }
 
-func testUDP(from, to *tuna.EncryptUDPConn) error {
+func testUDP(from, to *ts.UdpSession) error {
 	count := 1000
 	sendList := make([]string, count)
 	recvList := make([]string, count)
@@ -205,7 +206,7 @@ func testUDP(from, to *tuna.EncryptUDPConn) error {
 		wg.Add(1)
 		receive := make([]byte, 1024)
 		for i := 0; i < count; i++ {
-			_, _, err := to.ReadFromUDP(receive)
+			_, _, err := to.ReadFrom(receive)
 			if err != nil {
 				e = err
 				return
@@ -222,7 +223,7 @@ func testUDP(from, to *tuna.EncryptUDPConn) error {
 		wg.Add(1)
 		for i := 0; i < count; i++ {
 			rand.Read(send)
-			_, _, err := from.WriteMsgUDP(send, nil, nil)
+			_, err := from.WriteTo(send, nil)
 			if err != nil {
 				e = err
 				return

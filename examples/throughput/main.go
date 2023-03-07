@@ -16,7 +16,6 @@ import (
 	"github.com/nknorg/ncp-go"
 	"github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
-	"github.com/nknorg/tuna"
 	"github.com/nknorg/tuna/geo"
 )
 
@@ -100,7 +99,7 @@ func write(sess net.Conn, numBytes int) error {
 	return nil
 }
 
-func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
+func readUDP(conn *ts.UdpSession, numBytes int) error {
 	defer conn.Close()
 	buffer := make([]byte, 1024)
 	var timeStart time.Time
@@ -118,7 +117,7 @@ func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 		if err != nil {
 			return err
 		}
-		n, _, err := conn.ReadFromUDP(buffer)
+		n, _, err := conn.ReadFrom(buffer)
 		if udpBytesReceived == 0 {
 			timeStart = time.Now()
 		}
@@ -138,13 +137,13 @@ func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 	}
 }
 
-func writeUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
+func writeUDP(conn *ts.UdpSession, numBytes int) error {
 	defer conn.Close()
 	buffer := make([]byte, 1024)
 	timeStart := time.Now()
 	for {
 		rand.Read(buffer)
-		n, _, err := conn.WriteMsgUDP(buffer, nil, nil)
+		n, err := conn.WriteTo(buffer, nil)
 		if err != nil {
 			return err
 		}

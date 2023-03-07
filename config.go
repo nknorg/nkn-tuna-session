@@ -26,6 +26,8 @@ type Config struct {
 	SessionConfig          *ncp.Config
 	ReconnectRetries       int // negative value: unlimited retries, 0: no reconnect, positive value: limit retries.
 	ReconnectInterval      int // millisecond
+	UDPRecvBufferSize      int // UDP user data receive buffer size, bytes
+	MaxUdpDatagramBuffered int // Maximum udp datagrams can be buffered. It works with UDPRecvBufferSize together go decide if a datagram is buffered.
 }
 
 var defaultConfig = Config{
@@ -46,6 +48,8 @@ var defaultConfig = Config{
 	SessionConfig:          nil,
 	ReconnectRetries:       0,
 	ReconnectInterval:      2000,
+	UDPRecvBufferSize:      1 << 20, // 1 mega bytes
+	MaxUdpDatagramBuffered: 1024,
 }
 
 func DefaultConfig() *Config {
