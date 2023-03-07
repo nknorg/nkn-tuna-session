@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/hex"
 	"strconv"
 	"time"
 )
@@ -10,7 +11,7 @@ var (
 )
 
 func sessionKey(remoteAddr string, sessionID []byte) string {
-	return remoteAddr + string(sessionID)
+	return remoteAddr + ":" + hex.EncodeToString(sessionID)
 }
 
 func connID(i int) string {

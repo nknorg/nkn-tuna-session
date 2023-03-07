@@ -6,4 +6,30 @@ package pb;
 
 message SessionMetadata {
   bytes id = 1;
+  SessionType sessionType = 2;
+  string dialerNknAddr = 3;
+}
+
+message SessionData {
+  MsgType msgType = 1;
+  bytes data = 3;
+}
+
+enum SessionType {
+  ST_NONE = 0;
+  TCP = 1;
+  UDP = 2;
+}
+
+enum HeaderType {
+  HT_NONE = 0;
+  SESSION = 1;
+  USER = 2;
+}
+
+enum MsgType {
+  MT_NONE    = 0;
+  REMOTEADDR = 1;
+  SESSIONID  = 2;
+  CLOSE      = 255;
 }
