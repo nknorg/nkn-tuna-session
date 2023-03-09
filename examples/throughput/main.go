@@ -104,6 +104,15 @@ func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 	defer conn.Close()
 	buffer := make([]byte, 1024)
 	var timeStart time.Time
+	defer func() {
+		if udpBytesReceived > 0 {
+			mbTobytes := math.Pow(2, 20)
+			sent := float64(udpBytesSend) / mbTobytes
+			received := float64(udpBytesReceived) / mbTobytes
+			speed := received / time.Since(timeStart).Seconds()
+			log.Printf("UDP: Received %.2f MB bytes, speed: %.2f MB/s, package loss:  %.2f%% \n", received, speed, 100*(1-received/sent))
+		}
+	}()
 	for {
 		err := conn.SetReadDeadline(time.Now().Add(30 * time.Second))
 		if err != nil {
@@ -119,12 +128,12 @@ func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 		udpBytesReceived += n
 		if ((udpBytesReceived - n) * 10 / numBytes) != (udpBytesReceived * 10 / numBytes) {
 			mbTobytes := math.Pow(2, 20)
-			sent := float64(udpBytesSend) / mbTobytes
 			received := float64(udpBytesReceived) / mbTobytes
-			timeEnd := time.Now()
-			elapsed := timeEnd.Sub(timeStart)
-			speed := received / elapsed.Seconds()
-			log.Printf("UDP: Received %.2f MB bytes, speed: %.2f MB/s, package loss:  %.2f%% \n", received, speed, 100*(1-received/sent))
+			speed := received / time.Since(timeStart).Seconds()
+			log.Printf("UDP: Received %.2f MB bytes, speed: %.2f MB/s\n", received, speed)
+		}
+		if udpBytesReceived >= numBytes {
+			return nil
 		}
 	}
 }
@@ -139,18 +148,16 @@ func writeUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(100 * time.Nanosecond)
+		time.Sleep(10 * time.Millisecond)
 		udpBytesSend += n
-		if udpBytesSend > numBytes {
-			break
-		}
 		if ((udpBytesSend - n) * 10 / numBytes) != (udpBytesSend * 10 / numBytes) {
 			mbTobytes := math.Pow(2, 20)
 			sent := float64(udpBytesSend) / mbTobytes
-			timeEnd := time.Now()
-			elapsed := timeEnd.Sub(timeStart)
-			speed := sent / elapsed.Seconds()
+			speed := sent / time.Since(timeStart).Seconds()
 			log.Printf("UDP: Sent %.2f MB bytes, speed: %.2f MB/s\n", sent, speed)
+		}
+		if udpBytesSend >= numBytes {
+			break
 		}
 	}
 
@@ -236,6 +243,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+				os.Exit(0)
 			}()
 		} else {
 			err = c.Listen(nil)
