@@ -26,7 +26,7 @@ const (
 )
 
 var udpBytesReceived = 0
-var udpBytesSend = 0
+var udpBytesSent = 0
 
 func read(sess net.Conn) error {
 	timeStart := time.Now()
@@ -107,7 +107,7 @@ func readUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 	defer func() {
 		if udpBytesReceived > 0 {
 			mbTobytes := math.Pow(2, 20)
-			sent := float64(udpBytesSend) / mbTobytes
+			sent := float64(udpBytesSent) / mbTobytes
 			received := float64(udpBytesReceived) / mbTobytes
 			speed := received / time.Since(timeStart).Seconds()
 			log.Printf("UDP: Received %.2f MB bytes, speed: %.2f MB/s, package loss:  %.2f%% \n", received, speed, 100*(1-received/sent))
@@ -148,17 +148,17 @@ func writeUDP(conn *tuna.EncryptUDPConn, numBytes int) error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(10 * time.Millisecond)
-		udpBytesSend += n
-		if ((udpBytesSend - n) * 10 / numBytes) != (udpBytesSend * 10 / numBytes) {
+		udpBytesSent += n
+		if ((udpBytesSent - n) * 10 / numBytes) != (udpBytesSent * 10 / numBytes) {
 			mbTobytes := math.Pow(2, 20)
-			sent := float64(udpBytesSend) / mbTobytes
+			sent := float64(udpBytesSent) / mbTobytes
 			speed := sent / time.Since(timeStart).Seconds()
 			log.Printf("UDP: Sent %.2f MB bytes, speed: %.2f MB/s\n", sent, speed)
 		}
-		if udpBytesSend >= numBytes {
+		if udpBytesSent >= numBytes {
 			break
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	return nil
