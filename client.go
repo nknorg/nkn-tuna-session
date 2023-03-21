@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nknorg/tuna/types"
 	"io"
 	"log"
 	"net"
@@ -60,6 +61,8 @@ type TunaSessionClient struct {
 	connCount        map[string]int
 	closedSessionKey *gocache.Cache
 	isClosed         bool
+
+	tunaNode *types.Node
 }
 
 func NewTunaSessionClient(clientAccount *nkn.Account, m *nkn.MultiClient, wallet *nkn.Wallet, config *Config) (*TunaSessionClient, error) {
@@ -827,6 +830,10 @@ func (c *TunaSessionClient) startExits() error {
 			return err
 		}
 
+		if c.tunaNode != nil {
+			exits[i].SetRemoteNode(c.tunaNode)
+		}
+
 		go func(te *tuna.TunaExit) {
 			select {
 			case <-te.OnConnect.C:
@@ -958,19 +965,6 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 	return udpConn, nil
 }
 
-func (c *TunaSessionClient) ServicePort() (int, error) {
-	for _, te := range c.tunaExits {
-		ip := te.GetReverseIP().String()
-		ports := te.GetReverseTCPPorts()
-		if len(ip) > 0 && len(ports) > 0 {
-			if len(te.ReverseMetadata.ServiceUdp) > 0 {
-				return int(te.ReverseMetadata.ServiceUdp[0]), nil
-			}
-		}
-	}
-	return 0, errors.New("no tuna exit available")
-}
-
 func (c *TunaSessionClient) dialAConn(ctx context.Context, remoteAddr string, sessionID []byte, i int, addr *PubAddr, config *nkn.DialConfig) (conn *Conn, err error) {
 	if addr == nil || len(addr.IP) == 0 || addr.Port == 0 {
 		return nil, fmt.Errorf("dialAConn wrong params addr")
@@ -1082,4 +1076,8 @@ func (c *TunaSessionClient) IsNcpSessClosed(sessKey string) bool {
 		return true
 	}
 	return false
+}
+
+func (c *TunaSessionClient) SetTunaNode(node *types.Node) {
+	c.tunaNode = node
 }
