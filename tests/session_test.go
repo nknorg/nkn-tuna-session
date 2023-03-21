@@ -9,11 +9,16 @@ import (
 	"github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
 	"github.com/nknorg/nkn/v2/crypto"
+	"github.com/nknorg/nkn/v2/vault"
 	"github.com/nknorg/tuna"
+	"github.com/nknorg/tuna/pb"
 	_ "github.com/nknorg/tuna/tests"
+	"github.com/nknorg/tuna/types"
+	"github.com/nknorg/tuna/util"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,6 +39,12 @@ func TestTunaSession(t *testing.T) {
 	seed := crypto.GetSeedFromPrivateKey(privKey)
 	_, privKey2, _ := crypto.GenKeyPair()
 	seed2 := crypto.GetSeedFromPrivateKey(privKey2)
+
+	// Set up tuna
+	tunaPubKey, tunaPrivKey, _ := crypto.GenKeyPair()
+	tunaSeed := crypto.GetSeedFromPrivateKey(tunaPrivKey)
+	go runReverseEntry(tunaSeed)
+	time.Sleep(15 * time.Second)
 
 	account, err := nkn.NewAccount(seed)
 	if err != nil {
@@ -61,7 +72,7 @@ func TestTunaSession(t *testing.T) {
 	config := &ts.Config{
 		NumTunaListeners:     1,
 		TunaMeasureBandwidth: false,
-		TunaMaxPrice:         "0.01",
+		TunaMaxPrice:         "0.0",
 		SessionConfig:        &ncp.Config{MTU: int32(0)},
 	}
 
@@ -76,6 +87,22 @@ func TestTunaSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	n := &types.Node{
+		Delay:     0,
+		Bandwidth: 0,
+		Metadata: &pb.ServiceMetadata{
+			Ip:              "127.0.0.1",
+			TcpPort:         30020,
+			UdpPort:         30021,
+			ServiceId:       0,
+			Price:           "0.0",
+			BeneficiaryAddr: "",
+		},
+		Address:     hex.EncodeToString(tunaPubKey),
+		MetadataRaw: "CgkxMjcuMC4wLjEQxOoBGMXqAToFMC4wMDE=",
+	}
+	c.SetTunaNode(n)
 
 	err = c.Listen(nil)
 	if err != nil {
@@ -104,49 +131,58 @@ func TestTunaSession(t *testing.T) {
 		}
 	}()
 
-	mm, err := nkn.NewMultiClient(account2, dialID, 4, false, clientConfig)
-	if err != nil {
-		t.Fatal(err)
+	var wg sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			id := dialID + strconv.Itoa(i)
+			mm, err := nkn.NewMultiClient(account2, id, 4, false, clientConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			<-mm.OnConnect.C
+			time.Sleep(5 * time.Second)
+
+			cc, err := ts.NewTunaSessionClient(account2, mm, wallet2, config)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			dialAddr := listenID + "." + strings.SplitN(c.Addr().String(), ".", 2)[1]
+
+			t.Log("Dial to", dialAddr)
+
+			s, err := cc.DialWithConfig(dialAddr, dialConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = testTCP(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			udpConn, err := cc.DialUDPWithConfig(dialAddr, dialConfig)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = testUDP(udpConn, uConn)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}(i)
 	}
-
-	<-mm.OnConnect.C
-	time.Sleep(5 * time.Second)
-
-	cc, err := ts.NewTunaSessionClient(account2, mm, wallet2, config)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	dialAddr := listenID + "." + strings.SplitN(c.Addr().String(), ".", 2)[1]
-
-	t.Log("Dial to", dialAddr)
-
-	s, err := cc.DialWithConfig(dialAddr, dialConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = testTCP(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	udpConn, err := cc.DialUDPWithConfig(dialAddr, dialConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = testUDP(udpConn, uConn)
-	if err != nil {
-		t.Fatal(err)
-	}
+	wg.Wait()
 }
 
 func testTCP(conn net.Conn) error {
 	send := make([]byte, 4096)
 	receive := make([]byte, 4096)
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1000; i++ {
 		rand.Read(send)
 		conn.Write(send)
 		io.ReadFull(conn, receive)
@@ -209,4 +245,30 @@ func testUDP(from, to *tuna.EncryptUDPConn) error {
 	}
 
 	return e
+}
+
+func runReverseEntry(seed []byte) error {
+	entryAccount, err := vault.NewAccountWithSeed(seed)
+	if err != nil {
+		return err
+	}
+	seedRPCServerAddr := nkn.NewStringArray(nkn.DefaultSeedRPCServerAddr...)
+
+	walletConfig := &nkn.WalletConfig{
+		SeedRPCServerAddr: seedRPCServerAddr,
+	}
+	entryWallet, err := nkn.NewWallet(&nkn.Account{Account: entryAccount}, walletConfig)
+	if err != nil {
+		return err
+	}
+	entryConfig := new(tuna.EntryConfiguration)
+	err = util.ReadJSON("config.reverse.entry.json", entryConfig)
+	if err != nil {
+		return err
+	}
+	err = tuna.StartReverse(entryConfig, entryWallet)
+	if err != nil {
+		return err
+	}
+	select {}
 }
