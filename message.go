@@ -38,6 +38,10 @@ type PubAddr struct {
 	OutPrice string `json:"outPrice,omitempty"`
 }
 
+func (pa *PubAddr) String() string {
+	return fmt.Sprintf("%v:%v", pa.IP, pa.Port)
+}
+
 type PubAddrs struct {
 	Addrs         []*PubAddr `json:"addrs"`
 	SessionClosed bool       `json:"sessionClosed"`

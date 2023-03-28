@@ -65,6 +65,8 @@ type TunaSessionClient struct {
 	connCount        map[string]int
 	closedSessionKey *gocache.Cache
 	isClosed         bool
+	pubAddrs         map[string]*PubAddrs      // cached pub addrs, map key is remote address.
+	addrConnCount    map[string]map[string]int // map[remoteAddr]map[tcpAddr.String()] count
 
 	tunaNode *types.Node
 
@@ -91,6 +93,8 @@ func NewTunaSessionClient(clientAccount *nkn.Account, m *nkn.MultiClient, wallet
 		sharedKeys:       make(map[string]*[sharedKeySize]byte),
 		connCount:        make(map[string]int),
 		closedSessionKey: gocache.New(closedSessionKeyExpiration, closedSessionKeyCleanupInterval),
+		pubAddrs:         make(map[string]*PubAddrs),
+		addrConnCount:    make(map[string]map[string]int),
 	}
 
 	go c.removeClosedSessions()
@@ -248,6 +252,10 @@ func (c *TunaSessionClient) shouldAcceptAddr(addr string) bool {
 }
 
 func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAddr string, sessionID []byte) (*PubAddrs, error) {
+	if pubAddrs := c.getCachedPubAddrs(remoteAddr); pubAddrs != nil {
+		return pubAddrs, nil
+	}
+
 	buf, err := json.Marshal(&Request{Action: ActionGetPubAddr, SessionID: sessionID})
 	if err != nil {
 		return nil, err
@@ -310,9 +318,13 @@ func (c *TunaSessionClient) getPubAddrsFromRemote(ctx context.Context, remoteAdd
 
 	for _, addr := range pubAddrs.Addrs {
 		if len(addr.IP) > 0 && addr.Port != 0 {
+			c.Lock()
+			c.pubAddrs[remoteAddr] = pubAddrs
+			c.Unlock()
 			return pubAddrs, nil
 		}
 	}
+
 	return nil, ErrNoPubAddr
 }
 
@@ -480,7 +492,7 @@ func (c *TunaSessionClient) listenNet(i int) {
 				}
 			}
 
-			c.handleConn(conn, sessKey, i)
+			c.handleConn(conn, remoteAddr, sessionID, i)
 		}(conn)
 	}
 }
@@ -611,7 +623,7 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 					}
 				}()
 				for {
-					c.handleConn(conn, sessKey, i)
+					c.handleConn(conn, remoteAddr, sessionID, i)
 
 					if c.config.ReconnectRetries == 0 {
 						return
@@ -697,6 +709,9 @@ func (c *TunaSessionClient) Close() error {
 
 	for _, conns := range c.sessionConns {
 		for _, conn := range conns {
+			if conn == nil {
+				continue
+			}
 			err := conn.Close()
 			if err != nil {
 				log.Println("Conn close error:", err)
@@ -768,10 +783,12 @@ func (c *TunaSessionClient) handleMsg(conn *Conn, sess *ncp.Session, i int) erro
 	return nil
 }
 
-func (c *TunaSessionClient) handleConn(conn *Conn, sessKey string, i int) {
+func (c *TunaSessionClient) handleConn(conn *Conn, remoteAddr string, sessionID []byte, i int) {
 	if conn == nil {
 		return
 	}
+
+	sessKey := sessionKey(remoteAddr, sessionID)
 	c.Lock()
 	sess := c.sessions[sessKey]
 	if sess == nil {
@@ -779,11 +796,31 @@ func (c *TunaSessionClient) handleConn(conn *Conn, sessKey string, i int) {
 		return
 	}
 	c.connCount[sessKey]++
+
+	connStr := conn.RemoteAddr().String()
+	tcpCount, ok := c.addrConnCount[remoteAddr]
+	if ok {
+		tcpCount[connStr]++
+	} else {
+		c.addrConnCount[remoteAddr] = make(map[string]int)
+		c.addrConnCount[remoteAddr][connStr]++
+	}
 	c.Unlock()
 
 	defer func() {
 		c.Lock()
 		c.connCount[sessKey]--
+		delete(c.sessionConns[sessKey], connID(i))
+
+		c.addrConnCount[remoteAddr][connStr]--
+		if c.addrConnCount[remoteAddr][connStr] <= 0 { // When any count drops to 0 we remove c.pubAddrs[remoteAddr] from cache
+			delete(c.addrConnCount[remoteAddr], connStr)
+			if len(c.addrConnCount[remoteAddr]) == 0 {
+				delete(c.addrConnCount, remoteAddr)
+			}
+			delete(c.pubAddrs, remoteAddr)
+		}
+
 		shouldClose := c.connCount[sessKey] == 0
 		if shouldClose {
 			delete(c.sessions, sessKey)
@@ -1010,4 +1047,29 @@ func (c *TunaSessionClient) IsSessClosed(sessKey string) bool {
 
 func (c *TunaSessionClient) SetTunaNode(node *types.Node) {
 	c.tunaNode = node
+}
+
+func (c *TunaSessionClient) getCachedPubAddrs(remoteAddr string) *PubAddrs {
+	c.RLock()
+	defer c.RUnlock()
+
+	cachedAddr, ok := c.pubAddrs[remoteAddr]
+	if !ok {
+		return nil
+	}
+
+	for i := 0; i < len(cachedAddr.Addrs); i++ {
+		if cachedAddr.Addrs[i] == nil {
+			return nil
+		}
+		if tcpCount, ok := c.addrConnCount[remoteAddr]; ok {
+			if tcpCount[cachedAddr.Addrs[i].String()] <= 0 {
+				return nil
+			}
+		} else {
+			return nil
+		}
+	}
+
+	return cachedAddr
 }
