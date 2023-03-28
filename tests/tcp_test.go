@@ -13,16 +13,33 @@ import (
 	ts "github.com/nknorg/nkn-tuna-session"
 )
 
+// status of listener and dialer
+const (
+	listening = string("listening")
+	accepted  = string("accepted")
+	dialed    = string("dialed")
+	end       = string("end")
+)
+
+// sync listener and dialer
+func waitfor(ch chan string, result string) {
+	for {
+		str := <-ch
+		if str == result {
+			break
+		}
+	}
+}
+
 // go test -v -run=TestNormalListener
 func TestNormalListener(t *testing.T) {
 	ch := make(chan string, 1)
 
 	go func() {
-		StartTunaTcpListner(numTcpListener, ch)
+		StartTunaTcpListener(numTcpListener, ch)
 	}()
 
-	<-ch // started
-	<-ch // end
+	waitfor(ch, end)
 }
 
 // go test -v -run=TestNormalDialer
@@ -35,8 +52,7 @@ func TestNormalDialer(t *testing.T) {
 		StartTunaTcpDialer(bytesToSend, numTcpListener, ch)
 	}()
 
-	<-ch
-	<-ch
+	waitfor(ch, end)
 }
 
 // go test -v -run=TestCloseOneConnListener
@@ -46,14 +62,14 @@ func TestCloseOneConnListener(t *testing.T) {
 	ch := make(chan string, 1)
 
 	go func() {
-		tunaSess, ncpSess = StartTunaTcpListner(numTcpListener, ch)
+		tunaSess, ncpSess = StartTunaTcpListener(numTcpListener, ch)
 	}()
 
-	<-ch // started
+	waitfor(ch, accepted)
 	time.Sleep(3 * time.Second)
 	tunaSess.CloseOneConn(ncpSess, "2")
 
-	<-ch // end
+	waitfor(ch, end)
 }
 
 // go test -v -run=TestCloseOneConnDialer
@@ -68,11 +84,11 @@ func TestCloseOneConnDialer(t *testing.T) {
 		tunaSess, ncpSess = StartTunaTcpDialer(bytesToSend, numTcpListener, ch)
 	}()
 
-	<-ch
+	waitfor(ch, dialed)
 	time.Sleep(2 * time.Second)
 	tunaSess.CloseOneConn(ncpSess, "1")
 
-	<-ch
+	waitfor(ch, end)
 }
 
 // go test -v -run=TestCloseAllConnDialer
@@ -87,7 +103,7 @@ func TestCloseAllConnDialer(t *testing.T) {
 		tunaSess, ncpSess = StartTunaTcpDialer(bytesToSend, numTcpListener, ch)
 	}()
 
-	<-ch
+	waitfor(ch, dialed)
 	time.Sleep(2 * time.Second)
 	tunaSess.CloseOneConn(ncpSess, "0")
 	time.Sleep(2 * time.Second)
@@ -97,30 +113,8 @@ func TestCloseAllConnDialer(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	tunaSess.CloseOneConn(ncpSess, "3")
 
-	<-ch
+	waitfor(ch, end)
 }
-
-// go test -v -run=TestGetPubAddrsFromRemote
-// This test case need export tuna session client some private function and member.
-// So only test it when developing.
-// func TestGetPubAddrsFromRemote(t *testing.T) {
-// 	ch := make(chan string, 1)
-
-// 	go func() {
-// 		// wait for Listener be ready
-// 		time.Sleep(2 * time.Second)
-// 		tunaSess, _ := StartTunaTcpDialer(bytesToSend, numTcpListener, ch)
-// 		time.Sleep(5 * time.Second)
-// 		pubAddrs1, _ := tunaSess.GetPubAddrsFromRemote(context.Background(), remoteAddr, tunaSess.SessionID)
-// 		log.Printf("pubAddrs1: %+v", pubAddrs1)
-// 		pubAddrs2, _ := tunaSess.GetPubAddrsFromRemote(context.Background(), remoteAddr, tunaSess.SessionID)
-// 		log.Printf("pubAddrs2: %+v", pubAddrs2)
-// 		require.Equal(t, pubAddrs1, pubAddrs2)
-// 	}()
-
-// 	<-ch
-// 	<-ch
-// }
 
 func readTcp(sess net.Conn) error {
 	timeStart := time.Now()
@@ -163,7 +157,7 @@ func readTcp(sess net.Conn) error {
 	}
 }
 
-func StartTunaTcpListner(numListener int, ch chan string) (tunaSess *ts.TunaSessionClient, ncpSess *ncp.Session) {
+func StartTunaTcpListener(numListener int, ch chan string) (tunaSess *ts.TunaSessionClient, ncpSess *ncp.Session) {
 	acc, wal, err := CreateAccountAndWallet(seedHex)
 	if err != nil {
 		log.Fatal("CreateAccountAndWallet err: ", err)
@@ -181,23 +175,32 @@ func StartTunaTcpListner(numListener int, ch chan string) (tunaSess *ts.TunaSess
 	if err != nil {
 		log.Fatal("tunaSess.Listen ", err)
 	}
-
-	sess, err := tunaSess.Accept()
-	if err != nil {
-		log.Fatal("tunaSess.Accept ", err)
-	}
-	ncpSess = sess.(*ncp.Session)
-	ch <- "started"
+	log.Printf("tcp listener is listening...")
+	ch <- listening
 
 	go func() {
-		err = readTcp(ncpSess)
-		if err != nil {
-			log.Printf("StartTunaListner read err:%v\n", err)
-		} else {
-			log.Printf("Finished reading, close ncp.session now\n")
+		for {
+			sess, err := tunaSess.Accept()
+			if err != nil {
+				log.Fatal("tunaSess.Accept ", err)
+			}
+			ncpSess = sess.(*ncp.Session)
+			log.Printf("tcp listener accepted a new connection...")
+			ch <- accepted
+
+			go func() {
+				err = readTcp(ncpSess)
+				if err != nil {
+					log.Printf("StartTunaListner read err:%v\n", err)
+				} else {
+					log.Printf("Finished reading, close ncp.session now\n")
+				}
+				ncpSess.Close()
+
+				log.Printf("tcp listener finish job, exit now...")
+				ch <- end
+			}()
 		}
-		ncpSess.Close()
-		ch <- "end"
 	}()
 
 	return
@@ -223,7 +226,7 @@ func StartTunaTcpDialer(numBytes int, numListener int, ch chan string) (tunaSess
 	if err != nil {
 		log.Fatal("tunaSess.DialWithConfig ", err)
 	}
-	ch <- "started"
+	ch <- dialed
 
 	go func() {
 		err = writeTcp(ncpSess, numBytes)
@@ -234,7 +237,7 @@ func StartTunaTcpDialer(numBytes int, numListener int, ch chan string) (tunaSess
 		}
 		time.Sleep(time.Second) // wait for reader to read data.
 		ncpSess.Close()
-		ch <- "end"
+		ch <- end
 	}()
 
 	return

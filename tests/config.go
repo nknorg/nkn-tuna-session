@@ -4,7 +4,7 @@ import "time"
 
 const (
 	bytesToSend    = 10 << 10
-	numTcpListener = 4
+	numTcpListener = 2
 	numUdpListener = 1
 	numUdpDialers  = 4
 	bufSize        = 100
