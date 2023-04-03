@@ -14,14 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nknorg/tuna/types"
-
 	"github.com/imdario/mergo"
 	"github.com/nknorg/ncp-go"
 	"github.com/nknorg/nkn-sdk-go"
 	"github.com/nknorg/nkn-tuna-session/pb"
 	"github.com/nknorg/nkngomobile"
 	"github.com/nknorg/tuna"
+	"github.com/nknorg/tuna/types"
 	gocache "github.com/patrickmn/go-cache"
 	"google.golang.org/protobuf/proto"
 )
@@ -551,6 +550,11 @@ func (c *TunaSessionClient) DialSession(remoteAddr string) (*ncp.Session, error)
 
 func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialConfig) (*ncp.Session, error) {
 	config, err := nkn.MergeDialConfig(c.config.SessionConfig, config)
+	if err != nil {
+		return nil, err
+	}
+
+	remoteAddr, err = c.multiClient.ResolveDest(remoteAddr)
 	if err != nil {
 		return nil, err
 	}

@@ -67,6 +67,11 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 		return nil, err
 	}
 
+	remoteAddr, err = c.multiClient.ResolveDest(remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+
 	sessionID, err := nkn.RandomBytes(SessionIDSize)
 	if err != nil {
 		return nil, err
