@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"log"
 
-	ethresolver "github.com/nknorg/eth-resolver-go"
 	nkn "github.com/nknorg/nkn-sdk-go"
 	ts "github.com/nknorg/nkn-tuna-session"
 )
@@ -46,11 +45,7 @@ func CreateDialConfig(timeout int32) (config *nkn.DialConfig) {
 }
 
 func CreateClientConfig(retries int32) (config *nkn.ClientConfig) {
-	resolvers, err := ethresolver.NewDefaultResolvers()
-	if err != nil {
-		return nil
-	}
-	config = &nkn.ClientConfig{ConnectRetries: retries, Resolvers: resolvers}
+	config = &nkn.ClientConfig{ConnectRetries: retries}
 	return
 }
 
