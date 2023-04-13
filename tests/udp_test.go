@@ -148,7 +148,7 @@ func readUdp(udpSess *ts.UdpSession) error {
 	nFull := 0
 	var mu sync.RWMutex
 	for {
-		n, _, err := udpSess.ReadFrom(b)
+		n, addr, err := udpSess.ReadFrom(b)
 		if err != nil {
 			return err
 		}
@@ -179,6 +179,13 @@ func readUdp(udpSess *ts.UdpSession) error {
 			log.Printf("udp session %v finish receiving %v bytes", dialerNum, recved)
 			nFull++
 		}
+
+		_, err = udpSess.WriteTo(b[:n], addr)
+		if err != nil {
+			log.Printf("udp session %v WriteTo err: %v", dialerNum, err)
+			break
+		}
+
 		if nFull == numUdpDialers {
 			break
 		}
@@ -220,6 +227,17 @@ func writeUdp(udpSess *ts.UdpSession, dialerNum int) error {
 				log.Printf("dialer %v sent %v bytes %.4f MB/s", dialerNum, bytesSent,
 					float64(bytesSent)/math.Pow(2, 20)/(float64(time.Since(timeStart))/float64(time.Second)))
 			}
+		}
+
+		b := make([]byte, 1024)
+		n, _, err = udpSess.ReadFrom(b)
+		if err != nil {
+			log.Printf("dialer %v ReadFrom err: %v", dialerNum, err)
+			break
+		}
+		if string(b[:n]) != msgs[dialerNum] {
+			log.Printf("dialer %v Read %v is not as same as sent %v ", dialerNum, string(b[:n]), msgs[dialerNum])
+			break
 		}
 		time.Sleep(writeInterval)
 	}

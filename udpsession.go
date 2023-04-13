@@ -237,9 +237,15 @@ func (us *UdpSession) recvMsg() (err error) {
 				continue
 			}
 
-			us.RLock()
-			usa, ok := us.udpAddrToSessAddr[udpAddr.String()]
-			us.RUnlock()
+			var usa *udpSessionAddr
+			var ok bool
+			if us.isListener {
+				us.RLock()
+				usa, ok = us.udpAddrToSessAddr[udpAddr.String()]
+				us.RUnlock()
+			} else {
+				ok = udpAddr.String() == us.peer.udpAddr.String()
+			}
 
 			if ok { // only accept the data which has set up session
 				us.Lock()
