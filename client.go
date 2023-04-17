@@ -164,6 +164,7 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		MeasureStoragePath:        c.config.TunaMeasureStoragePath,
 		DialTimeout:               int32(c.config.TunaDialTimeout / 1000),
 		SortMeasuredNodes:         sortMeasuredNodes,
+		ReverseMinBalance:         c.config.TunaMinBalance,
 	}
 
 	return tuna.NewTunaExit([]tuna.Service{service}, c.wallet, nil, tunaConfig)
