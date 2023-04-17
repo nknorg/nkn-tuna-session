@@ -23,6 +23,7 @@ type Config struct {
 	TunaGeoDBPath          string
 	TunaMeasureBandwidth   bool
 	TunaMeasureStoragePath string
+	TunaMinBalance         string
 	SessionConfig          *ncp.Config
 	ReconnectRetries       int // negative value: unlimited retries, 0: no reconnect, positive value: limit retries.
 	ReconnectInterval      int // millisecond
@@ -45,6 +46,7 @@ var defaultConfig = Config{
 	TunaGeoDBPath:          "",
 	TunaMeasureBandwidth:   false,
 	TunaMeasureStoragePath: "",
+	TunaMinBalance:         "0",
 	SessionConfig:          nil,
 	ReconnectRetries:       0,
 	ReconnectInterval:      2000,
