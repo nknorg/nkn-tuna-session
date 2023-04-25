@@ -391,7 +391,7 @@ func (c *TunaSessionClient) listenNKN() {
 			}
 
 		default:
-			log.Printf("Unknown action %v", req.Action)
+			log.Printf("Unknown action, raw message: %s", string(msg.Data))
 			continue
 		}
 	}
