@@ -29,6 +29,7 @@ type Config struct {
 	ReconnectInterval      int // millisecond
 	UDPRecvBufferSize      int // UDP user data receive buffer size, bytes
 	MaxUdpDatagramBuffered int // Maximum udp datagrams can be buffered. It works with UDPRecvBufferSize together go decide if a datagram is buffered.
+	Verbose                bool
 }
 
 var defaultConfig = Config{
@@ -52,6 +53,7 @@ var defaultConfig = Config{
 	ReconnectInterval:      2000,
 	UDPRecvBufferSize:      1 << 20, // 1 mega bytes
 	MaxUdpDatagramBuffered: 1024,
+	Verbose:                false,
 }
 
 func DefaultConfig() *Config {

@@ -579,6 +579,13 @@ func (c *TunaSessionClient) DialWithConfig(remoteAddr string, config *nkn.DialCo
 
 	var wg sync.WaitGroup
 	for i := range pubAddrs.Addrs {
+		if pubAddrs.Addrs[i] == nil || pubAddrs.Addrs[i].IP == "" || pubAddrs.Addrs[i].Port == 0 {
+			if c.config.Verbose {
+				log.Printf("Tuna session pubAddrs %v doesn't have valid ip %v port %v", i, pubAddrs.Addrs[i].IP, pubAddrs.Addrs[i].Port)
+			}
+			continue
+		}
+
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
