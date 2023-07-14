@@ -175,6 +175,7 @@ func main() {
 	tunaServiceName := flag.String("tsn", "", "tuna reverse service name")
 	tunaSubscriptionPrefix := flag.String("tsp", "", "tuna subscription prefix")
 	tunaMeasureBandwidth := flag.Bool("tmb", false, "tuna measure bandwidth")
+	tunaMeasurementBytesDownLink := flag.Int("tmbd", 1, "tuna measure bandwidth downlink in bytes")
 	tunaMaxPrice := flag.String("price", "0.01", "tuna reverse service max price in unit of NKN/MB")
 	mtu := flag.Int("mtu", 0, "ncp session mtu")
 	u := flag.Bool("u", false, "send data through UDP instead TCP")
@@ -209,13 +210,14 @@ func main() {
 	clientConfig := &nkn.ClientConfig{ConnectRetries: 1}
 	dialConfig := &nkn.DialConfig{DialTimeout: 5000}
 	config := &ts.Config{
-		NumTunaListeners:       *numTunaListeners,
-		TunaServiceName:        *tunaServiceName,
-		TunaSubscriptionPrefix: *tunaSubscriptionPrefix,
-		TunaMeasureBandwidth:   *tunaMeasureBandwidth,
-		TunaMaxPrice:           *tunaMaxPrice,
-		TunaIPFilter:           &geo.IPFilter{Allow: locations},
-		SessionConfig:          &ncp.Config{MTU: int32(*mtu)},
+		NumTunaListeners:             *numTunaListeners,
+		TunaServiceName:              *tunaServiceName,
+		TunaSubscriptionPrefix:       *tunaSubscriptionPrefix,
+		TunaMeasureBandwidth:         *tunaMeasureBandwidth,
+		TunaMeasurementBytesDownLink: int32(*tunaMeasurementBytesDownLink),
+		TunaMaxPrice:                 *tunaMaxPrice,
+		TunaIPFilter:                 &geo.IPFilter{Allow: locations},
+		SessionConfig:                &ncp.Config{MTU: int32(*mtu)},
 	}
 
 	if *listen {
