@@ -162,6 +162,7 @@ func (c *TunaSessionClient) newTunaExit(i int) (*tuna.TunaExit, error) {
 		GeoDBPath:                 c.config.TunaGeoDBPath,
 		MeasureBandwidth:          c.config.TunaMeasureBandwidth,
 		MeasureStoragePath:        c.config.TunaMeasureStoragePath,
+		MeasurementBytesDownLink:  c.config.TunaMeasurementBytesDownLink,
 		DialTimeout:               int32(c.config.TunaDialTimeout / 1000),
 		SortMeasuredNodes:         sortMeasuredNodes,
 		ReverseMinBalance:         c.config.TunaMinBalance,
