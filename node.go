@@ -43,7 +43,7 @@ func weightedRandomChoice(nodes types.Nodes) int {
 	}
 
 	v := rand.Float64() * cdf[len(cdf)-1]
-	return sort.Search(len(cdf), func(i int) bool { return cdf[i] > v })
+	return sort.Search(len(cdf), func(i int) bool { return cdf[i] > v }) % len(cdf)
 }
 
 func sortMeasuredNodes(nodes types.Nodes) {
