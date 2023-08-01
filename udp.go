@@ -7,31 +7,24 @@ import (
 	"time"
 
 	"github.com/nknorg/nkn-sdk-go"
-	"github.com/nknorg/nkngomobile"
 	"github.com/nknorg/tuna"
 )
 
-const (
-	sendUdpMetaDataRetries = 2 // retries to send udp meta data
-)
-
-func (c *TunaSessionClient) ListenUDP(addrsRe *nkngomobile.StringArray) (*UdpSession, error) {
-	acceptAddrs, err := getAcceptAddrs(addrsRe)
-	if err != nil {
-		return nil, err
+// Start UDP server listening.
+// Because UDP is connectionless, we use TCP to track the connection status.
+// So we need to start a TCP server first, and then start a UDP server.
+// Meanwhile, Tuna session server hase two modes: TCP only, or TCP + UDP.
+func (c *TunaSessionClient) ListenUDP() (*UdpSession, error) {
+	if len(c.listeners) == 0 {
+		return nil, errors.New("please call Listen() to start TCP first")
 	}
-	if c.wallet == nil {
-		return nil, errors.New("ListenUDP wallet is empty")
-	}
-
-	c.acceptAddrs = acceptAddrs
 
 	if c.listenerUdpSess != nil {
 		return c.listenerUdpSess, nil
 	}
 	c.listenerUdpSess = newUdpSession(c, true)
 
-	err = c.startExits()
+	err := c.startExits()
 	if err != nil {
 		return nil, err
 	}
