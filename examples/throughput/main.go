@@ -234,7 +234,7 @@ func main() {
 		}
 
 		if *u {
-			uConn, err := c.ListenUDP(nil)
+			uConn, err := c.ListenUDP()
 			if err != nil {
 				log.Fatal(err)
 			}

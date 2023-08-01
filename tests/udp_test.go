@@ -70,7 +70,7 @@ func StartUDPListner(numListener int, ch chan string) (tunaSess *ts.TunaSessionC
 		}()
 	}()
 
-	udpSess, err := tunaSess.ListenUDP(nil)
+	udpSess, err := tunaSess.ListenUDP()
 	if err != nil {
 		log.Println("ListenUDP err ", err)
 	}

@@ -110,7 +110,7 @@ func TestTunaSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	uConn, err := c.ListenUDP(nil)
+	uConn, err := c.ListenUDP()
 	if err != nil {
 		t.Fatal(err)
 	}
