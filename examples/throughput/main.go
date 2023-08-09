@@ -233,6 +233,12 @@ func main() {
 			log.Fatal(err)
 		}
 
+		err = c.Listen(nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Listening at", c.Addr())
+
 		if *u {
 			uConn, err := c.ListenUDP()
 			if err != nil {
@@ -247,11 +253,6 @@ func main() {
 				os.Exit(0)
 			}()
 		} else {
-			err = c.Listen(nil)
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.Println("Listening at", c.Addr())
 			go func() {
 				for {
 					s, err := c.Accept()
