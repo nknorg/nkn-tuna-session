@@ -109,6 +109,10 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 }
 
 func (c *TunaSessionClient) handleUdpListenerTcp(tcpConn *Conn, remoteAddr string, sessionID []byte) {
+	if c.listenerUdpSess == nil { // Udp listener not started
+		tcpConn.Close()
+		return
+	}
 	sessKey := sessionKey(remoteAddr, sessionID)
 
 	c.listenerUdpSess.Lock()
