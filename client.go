@@ -898,7 +898,11 @@ func (c *TunaSessionClient) startExits() error {
 	listeners := make([]net.Listener, c.config.NumTunaListeners)
 	var err error
 	for i := 0; i < len(listeners); i++ {
-		listeners[i], err = net.Listen("tcp", "127.0.0.1:")
+		port, err := GetFreePort(0)
+		if err != nil {
+			return err
+		}
+		listeners[i], err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%v", port))
 		if err != nil {
 			return err
 		}
