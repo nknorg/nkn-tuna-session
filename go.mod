@@ -11,7 +11,7 @@ require (
 	github.com/nknorg/tuna v0.0.0-20230818024750-e800a743f680
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.17.0
 	google.golang.org/protobuf v1.29.1
 )
 
@@ -33,7 +33,7 @@ require (
 	github.com/rdegges/go-ipify v0.0.0-20150526035502-2d94a6a86c40 // indirect
 	github.com/xtaci/smux v2.0.1+incompatible // indirect
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
-	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
