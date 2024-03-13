@@ -12,7 +12,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/crypto v0.7.0
-	google.golang.org/protobuf v1.29.1
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
