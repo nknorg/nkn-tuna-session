@@ -359,7 +359,10 @@ func (c *TunaSessionClient) GetPubAddrs() *PubAddrs {
 
 func (c *TunaSessionClient) listenNKN() {
 	for {
-		msg := <-c.multiClient.OnMessage.C
+		msg, ok := <-c.multiClient.OnMessage.C
+		if !ok {
+			return
+		}
 		if !c.shouldAcceptAddr(msg.Src) {
 			continue
 		}
