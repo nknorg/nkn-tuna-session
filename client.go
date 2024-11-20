@@ -406,6 +406,9 @@ func (c *TunaSessionClient) listenNet(i int) {
 	for {
 		netConn, err := c.listeners[i].Accept()
 		if err != nil {
+			if c.IsClosed() {
+				return
+			}
 			log.Printf("Accept connection error: %v", err)
 			time.Sleep(time.Second)
 			continue
