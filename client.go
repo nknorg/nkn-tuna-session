@@ -406,7 +406,7 @@ func (c *TunaSessionClient) listenNet(i int) {
 	for {
 		netConn, err := c.listeners[i].Accept()
 		if err != nil {
-			if c.IsClosed() {
+			if c.isClosed {
 				return
 			}
 			log.Printf("Accept connection error: %v", err)
@@ -877,7 +877,7 @@ func (c *TunaSessionClient) removeClosedSessions() {
 	for {
 		time.Sleep(time.Second)
 
-		if c.IsClosed() {
+		if c.isClosed {
 			return
 		}
 
@@ -1011,7 +1011,7 @@ func (c *TunaSessionClient) dialTcpConn(ctx context.Context, remoteAddr string, 
 }
 
 func (c *TunaSessionClient) reconnect(remoteAddr string, sessionID []byte, i int, pubAddrs *PubAddrs, config *nkn.DialConfig) (conn *Conn, err error) {
-	if c.IsClosed() {
+	if c.isClosed {
 		return nil, ErrClosed
 	}
 	sessKey := sessionKey(remoteAddr, sessionID)
