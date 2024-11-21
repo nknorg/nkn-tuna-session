@@ -81,7 +81,7 @@ func (c *TunaSessionClient) DialUDPWithConfig(remoteAddr string, config *nkn.Dia
 		for {
 			udpSess.handleTcpMsg(udpSess.tcpConn, sessionKey(remoteAddr, sessionID))
 
-			if c.IsClosed() || udpSess.udpConn.IsClosed() {
+			if c.isClosed || udpSess.udpConn.IsClosed() {
 				break
 			}
 			if c.config.ReconnectRetries == 0 {

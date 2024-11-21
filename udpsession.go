@@ -79,7 +79,7 @@ func newUdpSession(ts *TunaSessionClient, isListener bool) *UdpSession {
 }
 
 func (us *UdpSession) DialUpSession(listenerNknAddr string, sessionID []byte, config *nkn.DialConfig) (err error) {
-	if us.ts.IsClosed() {
+	if us.ts.isClosed {
 		return ErrClosed
 	}
 
@@ -203,7 +203,7 @@ func (us *UdpSession) GetUDPConn() *tuna.EncryptUDPConn {
 }
 
 func (us *UdpSession) GetEstablishedUDPConn() (*tuna.EncryptUDPConn, error) {
-	if us.ts.IsClosed() {
+	if us.ts.isClosed {
 		return nil, ErrClosed
 	}
 	conn := us.GetUDPConn()
@@ -315,7 +315,7 @@ func (us *UdpSession) Write(b []byte) (int, error) {
 }
 
 func (us *UdpSession) SetDeadline(t time.Time) error {
-	if us.ts.IsClosed() {
+	if us.ts.isClosed {
 		return ErrClosed
 	}
 
